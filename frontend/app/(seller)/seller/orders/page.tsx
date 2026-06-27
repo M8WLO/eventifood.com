@@ -109,7 +109,7 @@ function OrderCard({ order, onStatus, nextStatus, nextLabel }: {
   nextLabel: string
 }) {
   return (
-    <div className="card border-l-4 border-orange-400">
+    <div className="card border-l-4 border-brand-400">
       <div className="flex items-start justify-between mb-2">
         <div>
           <span className="text-lg font-bold text-gray-900">{order.order_number}</span>
@@ -121,10 +121,10 @@ function OrderCard({ order, onStatus, nextStatus, nextLabel }: {
       </div>
       <ul className="text-sm text-gray-700 space-y-0.5 mb-3">
         {order.items.map((item, i) => (
-          <li key={i}>{item.quantity}× {item.product_name} ({item.variation_name})</li>
+          <li key={i}>{item.quantity}× {item.product_name}{item.variation_name && item.variation_name !== 'Standard' ? ` (${item.variation_name})` : ''}</li>
         ))}
       </ul>
-      {order.notes && <p className="text-xs text-orange-700 bg-orange-50 px-2 py-1 rounded mb-2">Note: {order.notes}</p>}
+      {order.notes && <p className="text-xs text-brand-700 bg-brand-50 px-2 py-1 rounded mb-2">Note: {order.notes}</p>}
       <div className="flex items-center justify-between">
         <span className="font-semibold text-gray-900">£{order.total}</span>
         <button

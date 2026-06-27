@@ -1,4 +1,5 @@
 from django.utils import timezone
+from django.conf import settings
 from datetime import timedelta
 from rest_framework import status
 from rest_framework.response import Response
@@ -69,6 +70,9 @@ class LoginView(APIView):
             }, status=status.HTTP_200_OK)
 
         refresh = RefreshToken.for_user(user)
+        refresh['email'] = user.email
+        refresh['full_name'] = user.full_name
+        refresh['is_superadmin'] = user.is_superadmin
         return Response({
             'access': str(refresh.access_token),
             'refresh': str(refresh),
@@ -102,6 +106,9 @@ class VerifyOTPView(APIView):
         otp.save()
 
         refresh = RefreshToken.for_user(user)
+        refresh['email'] = user.email
+        refresh['full_name'] = user.full_name
+        refresh['is_superadmin'] = user.is_superadmin
         return Response({
             'access': str(refresh.access_token),
             'refresh': str(refresh),
@@ -147,3 +154,28 @@ class LogoutView(APIView):
             except Exception:
                 pass
         return Response({'detail': 'Logged out.'}, status=status.HTTP_200_OK)
+
+
+class SetupInitialAdminView(APIView):
+    """One-time superadmin bootstrap. Only works in TEST_MODE and when no superadmin exists."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        if not getattr(settings, 'TEST_MODE', False):
+            return Response({'error': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+        if User.objects.filter(is_superadmin=True).exists():
+            return Response({'error': 'Superadmin already exists'}, status=status.HTTP_400_BAD_REQUEST)
+        email = request.data.get('email', '').strip()
+        password = request.data.get('password', '')
+        full_name = request.data.get('full_name', 'Admin')
+        if not email or not password:
+            return Response({'error': 'email and password required'}, status=status.HTTP_400_BAD_REQUEST)
+        u, created = User.objects.get_or_create(email=email, defaults={'full_name': full_name})
+        u.full_name = full_name
+        u.is_superadmin = True
+        u.is_staff = True
+        u.is_superuser = True
+        u.mfa_enabled = False
+        u.set_password(password)
+        u.save()
+        return Response({'status': 'ok', 'created': created, 'email': u.email})

@@ -1,5 +1,11 @@
 from rest_framework import serializers
-from .models import Category, Product, ProductVariation
+from .models import Category, Product, ProductExtra, ProductVariation
+
+
+class ProductExtraSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductExtra
+        fields = ['id', 'name', 'additional_price', 'is_available']
 
 
 class ProductVariationPublicSerializer(serializers.ModelSerializer):
@@ -18,18 +24,21 @@ class ProductVariationSellerSerializer(serializers.ModelSerializer):
 
 class ProductPublicSerializer(serializers.ModelSerializer):
     variations = ProductVariationPublicSerializer(many=True, read_only=True)
+    extras = ProductExtraSerializer(many=True, read_only=True)
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'description', 'photo', 'is_visible', 'out_of_stock', 'display_order', 'variations']
+        fields = ['id', 'name', 'description', 'photo', 'is_visible', 'out_of_stock', 'display_order', 'variations', 'extras']
 
 
 class ProductSellerSerializer(serializers.ModelSerializer):
     variations = ProductVariationSellerSerializer(many=True, read_only=True)
+    extras = ProductExtraSerializer(many=True, read_only=True)
 
     class Meta:
         model = Product
-        fields = ['id', 'category', 'name', 'description', 'photo', 'is_visible', 'out_of_stock', 'display_order', 'variations']
+        fields = ['id', 'category', 'name', 'description', 'photo', 'base_price',
+                  'has_variations', 'is_visible', 'out_of_stock', 'display_order', 'variations', 'extras']
 
 
 class CategorySerializer(serializers.ModelSerializer):

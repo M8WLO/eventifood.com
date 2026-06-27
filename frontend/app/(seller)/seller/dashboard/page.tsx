@@ -34,7 +34,7 @@ export default function DashboardPage() {
         </div>
         <div className="card">
           <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Revenue today</p>
-          <p className="text-3xl font-extrabold text-orange-500">
+          <p className="text-3xl font-extrabold text-brand-500">
             {loading ? '—' : `£${Number(stats?.total_revenue ?? 0).toFixed(2)}`}
           </p>
         </div>

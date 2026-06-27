@@ -61,7 +61,7 @@ export default function SuperAdminPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Link href={`/superadmin/tenants/${t.slug}`} className="text-orange-600 hover:underline text-xs font-medium">
+                    <Link href={`/superadmin/tenants/${t.slug}`} className="text-brand-600 hover:underline text-xs font-medium">
                       View →
                     </Link>
                   </td>

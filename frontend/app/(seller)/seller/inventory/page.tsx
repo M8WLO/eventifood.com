@@ -21,8 +21,8 @@ export default function InventoryPage() {
   const today = new Date().toISOString().split('T')[0]
 
   useEffect(() => {
-    api.get('/api/inventory/stock/')
-      .then((r) => setRows(r.data.filter((s: StockRow) => s.date === today)))
+    api.get('/api/inventory/stock/today/')
+      .then((r) => setRows(r.data))
       .finally(() => setLoading(false))
   }, [today])
 
@@ -79,7 +79,7 @@ export default function InventoryPage() {
       {rows.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
           <p className="text-4xl mb-3">📦</p>
-          <p>No stock records for today. Add products to your menu first.</p>
+          <p>No products found. Add products to your menu first.</p>
         </div>
       ) : (
         <div className="card p-0 overflow-hidden">
@@ -96,7 +96,7 @@ export default function InventoryPage() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {rows.map((row, idx) => (
-                <tr key={idx} className={row.dirty ? 'bg-orange-50' : ''}>
+                <tr key={idx} className={row.dirty ? 'bg-brand-50' : ''}>
                   <td className="px-4 py-3 font-medium text-gray-900">{row.product_name}</td>
                   <td className="px-4 py-2">
                     <input type="number" min={0} value={row.starting_qty ?? ''} onChange={(e) => update(idx, 'starting_qty', e.target.value ? Number(e.target.value) : null)} className="input-field w-20" />

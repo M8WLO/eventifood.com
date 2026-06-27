@@ -56,7 +56,7 @@ export default function TenantDetailPage() {
   return (
     <div className="p-8 max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-3 mb-2">
-        <Link href="/superadmin" className="text-orange-600 hover:underline text-sm">← All tenants</Link>
+        <Link href="/superadmin" className="text-brand-600 hover:underline text-sm">← All tenants</Link>
       </div>
       <h1 className="text-2xl font-bold text-gray-900">{tenant.name}</h1>
       <p className="text-gray-400 text-sm">Slug: {tenant.slug} · Created: {new Date(tenant.created_at).toLocaleDateString()}</p>
@@ -73,7 +73,7 @@ export default function TenantDetailPage() {
           </button>
         </div>
         <div>
-          <a href={`https://${tenant.slug}.eventifood.com`} target="_blank" rel="noreferrer" className="text-orange-600 hover:underline text-sm">
+          <a href={`https://${tenant.slug}.eventifood.com`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline text-sm">
             View store →
           </a>
         </div>

@@ -115,6 +115,8 @@ SIMPLE_JWT = {
 
 # CORS
 CORS_ALLOW_ALL_ORIGINS = True  # Dev only - override in production
+from corsheaders.defaults import default_headers
+CORS_ALLOW_HEADERS = list(default_headers) + ['x-tenant-slug']
 
 # Email (dev: console, prod: SMTP)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

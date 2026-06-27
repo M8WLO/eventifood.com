@@ -23,7 +23,10 @@ export function middleware(request: NextRequest) {
     // Buyer storefront — rewrite to /store/[slug]
     requestHeaders.set('x-tenant-slug', subdomain)
     const url = request.nextUrl.clone()
-    url.pathname = `/store/${subdomain}${request.nextUrl.pathname}`
+    // Avoid double-rewriting if the path already contains /store/${subdomain}
+    if (!url.pathname.startsWith(`/store/${subdomain}`)) {
+      url.pathname = `/store/${subdomain}${request.nextUrl.pathname}`
+    }
     return NextResponse.rewrite(url, { request: { headers: requestHeaders } })
   }
 

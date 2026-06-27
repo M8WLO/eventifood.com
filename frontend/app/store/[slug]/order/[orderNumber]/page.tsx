@@ -43,7 +43,7 @@ export default function OrderStatusPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-orange-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-gray-400">Loading order status…</div>
       </div>
     )
@@ -51,7 +51,7 @@ export default function OrderStatusPage() {
 
   if (error || !order) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-orange-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <p className="text-4xl mb-4">😕</p>
           <p className="text-gray-600">Order not found.</p>
@@ -63,7 +63,7 @@ export default function OrderStatusPage() {
   const config = STATUS_CONFIG[order.status] || STATUS_CONFIG.placed
 
   return (
-    <div className="min-h-screen bg-orange-50 flex flex-col items-center justify-center px-4 text-center">
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 text-center">
       <div className="card max-w-sm w-full shadow-lg py-10 px-8">
         <div className="text-7xl mb-6">{config.emoji}</div>
         <h1 className={`text-2xl font-extrabold mb-2 ${config.color}`}>{config.label}</h1>

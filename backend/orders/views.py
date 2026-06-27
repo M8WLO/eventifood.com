@@ -7,9 +7,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
-from catalog.models import ProductVariation
+from catalog.models import ProductVariation, ProductExtra
 from notifications.services import notify_order_ready, send_order_confirmation_email
-from .models import Order, OrderItem
+from .models import Order, OrderItem, OrderItemExtra
 from .serializers import PlaceOrderSerializer, OrderSerializer, OrderStatusSerializer
 
 
@@ -48,17 +48,30 @@ class PlaceOrderView(APIView):
                     {'detail': f"Variation {item_data['variation_id']} not found."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+            # Resolve extras
+            extra_ids = item_data.get('extras', [])
+            resolved_extras = []
+            extras_cost = Decimal('0.00')
+            for extra_id in extra_ids:
+                try:
+                    extra = ProductExtra.objects.get(pk=extra_id, product=variation.product)
+                    resolved_extras.append(extra)
+                    extras_cost += extra.additional_price
+                except ProductExtra.DoesNotExist:
+                    pass
             qty = item_data['quantity']
-            subtotal = variation.retail_price * qty
+            item_price = variation.retail_price + extras_cost
+            subtotal = item_price * qty
             total += subtotal
             order_items.append({
                 'variation': variation,
                 'product_name': variation.product.name,
                 'variation_name': variation.name,
-                'retail_price': variation.retail_price,
+                'retail_price': item_price,
                 'cost_price': variation.cost_price,
                 'quantity': qty,
                 'subtotal': subtotal,
+                'resolved_extras': resolved_extras,
             })
 
         order = Order.objects.create(
@@ -69,7 +82,15 @@ class PlaceOrderView(APIView):
         )
 
         for item in order_items:
-            OrderItem.objects.create(order=order, **item)
+            resolved_extras = item.pop('resolved_extras')
+            order_item = OrderItem.objects.create(order=order, **item)
+            for extra in resolved_extras:
+                OrderItemExtra.objects.create(
+                    order_item=order_item,
+                    extra=extra,
+                    name=extra.name,
+                    additional_price=extra.additional_price,
+                )
 
         send_order_confirmation_email(order)
 

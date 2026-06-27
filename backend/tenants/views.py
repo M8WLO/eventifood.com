@@ -54,8 +54,10 @@ class TenantDetailView(APIView):
         tenant = request.tenant
         if not tenant:
             return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
-        serializer = TenantSerializer(tenant)
-        return Response(serializer.data)
+        if not tenant.qr_code_svg or 'viewBox' not in tenant.qr_code_svg:
+            tenant.generate_qr_code()
+            tenant.save(update_fields=['qr_code_svg'])
+        return Response(TenantSerializer(tenant).data)
 
     def patch(self, request):
         tenant = request.tenant
@@ -69,6 +71,21 @@ class TenantDetailView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
         return Response(serializer.data)
+
+
+class MyTenantView(APIView):
+    """Resolve the authenticated user's tenant without needing X-Tenant-Slug."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        membership = TenantMembership.objects.filter(user=request.user).select_related('tenant').first()
+        if not membership:
+            return Response({'detail': 'No tenant found for this user.'}, status=status.HTTP_404_NOT_FOUND)
+        tenant = membership.tenant
+        if not tenant.qr_code_svg or 'viewBox' not in tenant.qr_code_svg:
+            tenant.generate_qr_code()
+            tenant.save(update_fields=['qr_code_svg'])
+        return Response(TenantSerializer(tenant).data)
 
 
 class TenantPublicView(APIView):

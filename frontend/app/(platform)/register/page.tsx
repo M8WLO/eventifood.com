@@ -72,7 +72,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="min-h-screen bg-orange-50 flex items-center justify-center px-4 py-12">
+    <main className="min-h-screen bg-brand-50 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-extrabold text-gray-900">Create your store</h1>
@@ -98,10 +98,18 @@ export default function RegisterPage() {
               <input name="store_name" value={form.store_name} onChange={handleChange} required className="input-field" placeholder="Burger Bliss" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Store URL slug</label>
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-gray-400 shrink-0">eventifood.com/</span>
-                <input name="store_slug" value={form.store_slug} onChange={handleChange} required className="input-field" placeholder="burger-bliss" pattern="[a-z0-9\-]+" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Your store URL</label>
+              <div className="flex items-center rounded-lg border border-gray-200 focus-within:ring-2 focus-within:ring-brand-400 overflow-hidden">
+                <input
+                  name="store_slug"
+                  value={form.store_slug}
+                  onChange={handleChange}
+                  required
+                  className="flex-1 px-3 py-2 text-sm outline-none bg-white min-w-0"
+                  placeholder="andys-burgers"
+                  pattern="[a-z0-9\-]+"
+                />
+                <span className="text-sm text-gray-400 bg-gray-50 border-l border-gray-200 px-3 py-2 shrink-0">.eventifood.com</span>
               </div>
               <p className="text-xs text-gray-400 mt-1">Lowercase letters, numbers and hyphens only</p>
             </div>
@@ -112,7 +120,7 @@ export default function RegisterPage() {
           </form>
           <p className="text-center text-sm text-gray-500 mt-4">
             Already have an account?{' '}
-            <Link href="/login" className="text-orange-600 hover:underline font-medium">Sign in</Link>
+            <Link href="/login" className="text-brand-600 hover:underline font-medium">Sign in</Link>
           </p>
         </div>
       </div>

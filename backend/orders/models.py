@@ -42,3 +42,17 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.quantity}x {self.product_name} ({self.variation_name})"
+
+
+class OrderItemExtra(models.Model):
+    """Snapshotted extra/add-on chosen by the customer at order time."""
+    order_item = models.ForeignKey(OrderItem, on_delete=models.CASCADE, related_name='extras')
+    extra = models.ForeignKey('catalog.ProductExtra', on_delete=models.SET_NULL, null=True)
+    name = models.CharField(max_length=200)
+    additional_price = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.name} (+£{self.additional_price})"

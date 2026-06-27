@@ -1,3 +1,4 @@
+import datetime
 from django.db.models import Sum
 from rest_framework import status
 from rest_framework.response import Response
@@ -62,6 +63,33 @@ class StockRecordDetailView(APIView):
             return Response(status=status.HTTP_404_NOT_FOUND)
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class StockTodayView(APIView):
+    """Returns all products for the tenant with their stock record for today.
+    Creates an empty StockRecord (get_or_create) for any product that doesn't have one yet."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        tenant = request.tenant
+        if not tenant:
+            return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
+        today = datetime.date.today()
+        products = Product.objects.filter(category__tenant=tenant).select_related('category').order_by('category__display_order', 'display_order')
+        result = []
+        for product in products:
+            record, _ = StockRecord.objects.get_or_create(product=product, date=today)
+            result.append({
+                'id': record.pk,
+                'product': product.pk,
+                'product_name': product.name,
+                'date': str(today),
+                'starting_qty': record.starting_qty,
+                'wastage_qty': record.wastage_qty,
+                'wastage_cost': str(record.wastage_cost),
+                'notes': record.notes,
+            })
+        return Response(result)
 
 
 class WastageReportView(APIView):

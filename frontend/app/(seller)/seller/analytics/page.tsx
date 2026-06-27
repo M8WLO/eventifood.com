@@ -43,7 +43,7 @@ export default function AnalyticsPage() {
           <button
             key={p.value}
             onClick={() => setPeriod(p.value)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${period === p.value ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${period === p.value ? 'bg-brand-500 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
           >
             {p.label}
           </button>
@@ -96,7 +96,7 @@ export default function AnalyticsPage() {
                 {report.revenue_by_category.map((c) => (
                   <div key={c.category} className="flex items-center justify-between card py-2 px-4">
                     <span className="text-sm text-gray-700 font-medium">{c.category}</span>
-                    <span className="text-sm font-bold text-orange-600">£{Number(c.revenue).toFixed(2)}</span>
+                    <span className="text-sm font-bold text-brand-600">£{Number(c.revenue).toFixed(2)}</span>
                   </div>
                 ))}
               </div>
@@ -114,7 +114,7 @@ function StatCard({ label, value, highlight }: { label: string; value: string; h
   return (
     <div className="card">
       <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">{label}</p>
-      <p className={`text-2xl font-extrabold ${highlight ? 'text-orange-500' : 'text-gray-900'}`}>{value}</p>
+      <p className={`text-2xl font-extrabold ${highlight ? 'text-brand-500' : 'text-gray-900'}`}>{value}</p>
     </div>
   )
 }

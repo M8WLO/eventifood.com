@@ -1,17 +1,26 @@
 from rest_framework import serializers
-from .models import Order, OrderItem
+from .models import Order, OrderItem, OrderItemExtra
+
+
+class OrderItemExtraSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItemExtra
+        fields = ['id', 'name', 'additional_price']
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
+    extras = OrderItemExtraSerializer(many=True, read_only=True)
+
     class Meta:
         model = OrderItem
-        fields = ['id', 'variation', 'product_name', 'variation_name', 'retail_price', 'cost_price', 'quantity', 'subtotal']
+        fields = ['id', 'variation', 'product_name', 'variation_name', 'retail_price', 'cost_price', 'quantity', 'subtotal', 'extras']
         read_only_fields = ['product_name', 'variation_name', 'retail_price', 'cost_price', 'subtotal']
 
 
 class PlaceOrderItemSerializer(serializers.Serializer):
     variation_id = serializers.IntegerField()
     quantity = serializers.IntegerField(min_value=1, default=1)
+    extras = serializers.ListField(child=serializers.IntegerField(), required=False, default=list)
 
 
 class PlaceOrderSerializer(serializers.Serializer):

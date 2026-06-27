@@ -8,7 +8,9 @@ from django.core.mail import send_mail
 
 
 def generate_otp_code() -> str:
-    """Generate a 6-digit numeric OTP code."""
+    """Generate a 6-digit numeric OTP code. Returns 000000 in TEST_MODE."""
+    if getattr(settings, 'TEST_MODE', False):
+        return '000000'
     return ''.join(random.choices(string.digits, k=6))
 
 

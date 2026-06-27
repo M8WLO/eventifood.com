@@ -32,7 +32,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-orange-50 flex items-center justify-center px-4">
+    <main className="min-h-screen bg-brand-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-extrabold text-gray-900">Welcome back</h1>
@@ -63,7 +63,10 @@ export default function LoginPage() {
           </form>
           <p className="text-center text-sm text-gray-500 mt-4">
             No account?{' '}
-            <Link href="/register" className="text-orange-600 hover:underline font-medium">Create one free</Link>
+            <Link href="/register" className="text-brand-600 hover:underline font-medium">Create one free</Link>
+          </p>
+          <p className="text-center text-sm mt-3">
+            <Link href="/kitchen-login" className="text-gray-400 hover:text-gray-600">Kitchen mode login →</Link>
           </p>
         </div>
       </div>

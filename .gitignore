@@ -16,6 +16,8 @@ develop-eggs/
 .installed.cfg
 lib/
 lib64/
+!frontend/lib/
+!frontend/contexts/
 *.so
 .env
 .venv
@@ -68,3 +70,5 @@ htmlcov/
 
 # Railway
 .railway/
+
+*.db

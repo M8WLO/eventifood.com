@@ -111,19 +111,56 @@ export default function SettingsPage() {
         {tenant.qr_code_svg ? (
           <div className="flex flex-col items-center gap-4">
             <div
-              className="w-48 h-48 border border-gray-200 rounded-lg p-2"
+              className="w-96 h-96 border border-gray-200 rounded-lg p-3 [&>svg]:w-full [&>svg]:h-full"
               dangerouslySetInnerHTML={{ __html: tenant.qr_code_svg }}
             />
-            <button onClick={downloadSVG} className="btn-secondary text-sm">
-              Download SVG
-            </button>
+            <div className="flex gap-3">
+              <button onClick={downloadSVG} className="btn-secondary text-sm">
+                Download SVG
+              </button>
+              <button
+                onClick={() => window.open('/seller/display', '_blank', 'width=900,height=900')}
+                className="btn-secondary text-sm"
+              >
+                Full-screen display
+              </button>
+            </div>
             <p className="text-xs text-gray-400 text-center">
-              Print and display this at your truck so customers can scan to order.
+              Print and display this at your truck so customers can scan to order.<br />
+              Use "Full-screen display" to show the QR on a secondary monitor or tablet.
             </p>
           </div>
         ) : (
           <p className="text-sm text-gray-400">QR code not yet generated.</p>
         )}
+      </div>
+
+      {/* Kitchen board */}
+      <div className="card">
+        <h2 className="font-semibold text-gray-700 mb-3">Kitchen board</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Open the kitchen display in kiosk mode — covers the sidebar so kitchen staff only see the board.
+          Use this on a dedicated kitchen tablet or secondary screen.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => window.open('/seller/orders/board?kiosk=1', '_blank')}
+            className="btn-secondary text-sm"
+          >
+            Open kitchen board
+          </button>
+          <a
+            href="/kitchen-login"
+            target="_blank"
+            rel="noreferrer"
+            className="btn-secondary text-sm inline-flex items-center"
+          >
+            Kitchen-only login page
+          </a>
+        </div>
+        <p className="text-xs text-gray-400 mt-3">
+          Share the kitchen-only login link with kitchen staff — they can log in and see only the board, not menu or settings.
+        </p>
       </div>
 
       {/* Subscription */}

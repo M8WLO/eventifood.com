@@ -18,6 +18,8 @@ class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
+    base_price = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    has_variations = models.BooleanField(default=False)
     photo = models.ImageField(upload_to='products/', null=True, blank=True)
     is_visible = models.BooleanField(default=True)
     out_of_stock = models.BooleanField(default=False)
@@ -32,6 +34,20 @@ class Product(models.Model):
     @property
     def tenant(self):
         return self.category.tenant
+
+
+class ProductExtra(models.Model):
+    """Optional add-ons that a customer can select when ordering (e.g. Extra cheese +£0.50)."""
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='extras')
+    name = models.CharField(max_length=200)
+    additional_price = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    is_available = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['additional_price', 'name']
+
+    def __str__(self):
+        return f"{self.product.name} + {self.name} (£{self.additional_price})"
 
 
 class ProductVariation(models.Model):

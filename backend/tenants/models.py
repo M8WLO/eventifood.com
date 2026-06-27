@@ -21,9 +21,19 @@ class Tenant(models.Model):
 
     def generate_qr_code(self):
         """Generate SVG QR code pointing to https://{slug}.eventifood.com and store it."""
+        import re
         url = f"https://{self.slug}.eventifood.com"
-        factory = qrcode.image.svg.SvgImage
+        factory = qrcode.image.svg.SvgPathImage
         img = qrcode.make(url, image_factory=factory, box_size=10)
         stream = io.BytesIO()
         img.save(stream)
-        self.qr_code_svg = stream.getvalue().decode('utf-8')
+        svg = stream.getvalue().decode('utf-8')
+        # Extract dimensions and add viewBox so the SVG scales with CSS
+        m = re.search(r'width="(\d+)".*?height="(\d+)"', svg)
+        if m:
+            w, h = m.group(1), m.group(2)
+            svg = re.sub(r'(<svg[^>]*?)width="\d+"', r'\1', svg)
+            svg = re.sub(r'(<svg[^>]*?)height="\d+"', r'\1', svg)
+            if 'viewBox' not in svg:
+                svg = svg.replace('<svg ', f'<svg viewBox="0 0 {w} {h}" ', 1)
+        self.qr_code_svg = svg
