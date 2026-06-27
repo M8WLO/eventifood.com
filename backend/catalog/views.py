@@ -23,7 +23,7 @@ class MenuView(APIView):
             tenant=tenant,
             products__is_visible=True,
         ).prefetch_related('products__variations', 'products__extras').distinct()
-        serializer = CategorySerializer(categories, many=True)
+        serializer = CategorySerializer(categories, many=True, context={'request': request})
         return Response(serializer.data)
 
 
@@ -35,7 +35,7 @@ class CategoryListView(APIView):
         if not tenant:
             return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
         categories = Category.objects.filter(tenant=tenant).prefetch_related('products__variations', 'products__extras')
-        serializer = CategorySellerSerializer(categories, many=True)
+        serializer = CategorySellerSerializer(categories, many=True, context={'request': request})
         return Response(serializer.data)
 
     def post(self, request):
@@ -43,7 +43,7 @@ class CategoryListView(APIView):
         if not tenant:
             return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
         from .serializers import CategorySellerSerializer as CS
-        serializer = CS(data=request.data)
+        serializer = CS(data=request.data, context={'request': request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save(tenant=tenant)
@@ -60,13 +60,13 @@ class CategoryDetailView(APIView):
         obj = self.get_object(pk, request.tenant)
         if not obj:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        return Response(CategorySellerSerializer(obj).data)
+        return Response(CategorySellerSerializer(obj, context={'request': request}).data)
 
     def patch(self, request, pk):
         obj = self.get_object(pk, request.tenant)
         if not obj:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = CategorySellerSerializer(obj, data=request.data, partial=True)
+        serializer = CategorySellerSerializer(obj, data=request.data, partial=True, context={'request': request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
@@ -97,10 +97,9 @@ class ProductListView(APIView):
                     {'detail': f'Product limit reached ({plan_tier.max_products} on {plan_tier.name} plan). Upgrade to add more.'},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-        serializer = ProductSellerSerializer(data=request.data)
+        serializer = ProductSellerSerializer(data=request.data, context={'request': request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        # Validate category belongs to tenant
         category = serializer.validated_data.get('category')
         if category.tenant != tenant:
             return Response({'detail': 'Category not found.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -118,13 +117,13 @@ class ProductDetailView(APIView):
         obj = self.get_object(pk, request.tenant)
         if not obj:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        return Response(ProductSellerSerializer(obj).data)
+        return Response(ProductSellerSerializer(obj, context={'request': request}).data)
 
     def patch(self, request, pk):
         obj = self.get_object(pk, request.tenant)
         if not obj:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = ProductSellerSerializer(obj, data=request.data, partial=True)
+        serializer = ProductSellerSerializer(obj, data=request.data, partial=True, context={'request': request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
@@ -184,7 +183,7 @@ class VariationDetailView(APIView):
         product = Product.objects.filter(pk=product_pk, category__tenant=tenant).first()
         if not product:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = ProductVariationSellerSerializer(data=request.data)
+        serializer = ProductVariationSellerSerializer(data=request.data, context={'request': request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save(product=product)
@@ -194,7 +193,7 @@ class VariationDetailView(APIView):
         obj = self.get_object(pk, request.tenant)
         if not obj:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = ProductVariationSellerSerializer(obj, data=request.data, partial=True)
+        serializer = ProductVariationSellerSerializer(obj, data=request.data, partial=True, context={'request': request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
