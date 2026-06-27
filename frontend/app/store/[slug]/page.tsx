@@ -285,29 +285,33 @@ export default function StorefrontPage() {
         <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
             <div className="p-5">
-              <h3 className="font-bold text-gray-900 text-lg mb-1">Add extras?</h3>
-              <p className="text-sm text-gray-500 mb-4">Optional add-ons for {extrasModal.product.name}</p>
+              <h3 className="font-bold text-gray-900 text-lg mb-1">Customise</h3>
+              <p className="text-sm text-gray-500 mb-4">{extrasModal.product.name}</p>
               <div className="space-y-3 mb-5">
-                {extrasModal.product.extras.filter((e) => e.is_available).map((extra) => (
-                  <label key={extra.id} className="flex items-center justify-between cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedExtras.has(extra.id)}
-                        onChange={(e) => {
-                          setSelectedExtras((prev) => {
-                            const next = new Set(prev)
-                            e.target.checked ? next.add(extra.id) : next.delete(extra.id)
-                            return next
-                          })
-                        }}
-                        className="w-4 h-4 rounded"
-                      />
-                      <span className="text-sm text-gray-800">{extra.name}</span>
-                    </div>
-                    <span className="text-sm font-semibold text-gray-700">+£{Number(extra.additional_price).toFixed(2)}</span>
-                  </label>
-                ))}
+                {extrasModal.product.extras.filter((e) => e.is_available).map((extra) => {
+                  const price = Number(extra.additional_price)
+                  const priceLabel = price === 0 ? 'Free' : price > 0 ? `+£${price.toFixed(2)}` : `−£${Math.abs(price).toFixed(2)}`
+                  return (
+                    <label key={extra.id} className="flex items-center justify-between cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedExtras.has(extra.id)}
+                          onChange={(e) => {
+                            setSelectedExtras((prev) => {
+                              const next = new Set(prev)
+                              e.target.checked ? next.add(extra.id) : next.delete(extra.id)
+                              return next
+                            })
+                          }}
+                          className="w-4 h-4 rounded"
+                        />
+                        <span className="text-sm text-gray-800">{extra.name}</span>
+                      </div>
+                      <span className={`text-sm font-semibold ${price < 0 ? 'text-green-600' : 'text-gray-700'}`}>{priceLabel}</span>
+                    </label>
+                  )
+                })}
               </div>
               <div className="flex gap-3">
                 <button

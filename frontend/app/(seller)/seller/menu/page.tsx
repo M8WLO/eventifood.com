@@ -601,7 +601,8 @@ export default function MenuPage() {
 
                 {/* Extras */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Extras / Add-ons</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Extras / Add-ons</label>
+                  <p className="text-xs text-gray-400 mb-2">Use a positive price to add cost (e.g. +£0.50 extra cheese). Use a negative price for removals at no charge (e.g. −£0.00 no gherkins), or a negative price for a discount.</p>
                   <div className="space-y-2">
                     {form.extras.map((e, idx) => (
                       <div key={idx} className="flex gap-2 items-center">
@@ -609,15 +610,15 @@ export default function MenuPage() {
                           value={e.name}
                           onChange={(ev) => updateExtra(idx, 'name', ev.target.value)}
                           className="input-field flex-1"
-                          placeholder="e.g. Extra cheese"
+                          placeholder="e.g. Extra cheese / No gherkins"
                         />
-                        <div className="relative w-28 shrink-0">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">+£</span>
+                        <div className="relative w-32 shrink-0">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">£</span>
                           <input
-                            type="number" min="0" step="0.01"
+                            type="number" step="0.01"
                             value={e.additional_price}
                             onChange={(ev) => updateExtra(idx, 'additional_price', ev.target.value)}
-                            className="input-field pl-8" placeholder="0.50"
+                            className="input-field pl-7" placeholder="0.50 or -0.50"
                           />
                         </div>
                         <button
@@ -627,7 +628,7 @@ export default function MenuPage() {
                       </div>
                     ))}
                     <button type="button" onClick={addExtraRow} className="text-sm text-brand-600 hover:underline">
-                      + Add extra
+                      + Add extra / removal
                     </button>
                   </div>
                 </div>

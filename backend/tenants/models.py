@@ -12,6 +12,7 @@ class Tenant(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     qr_code_svg = models.TextField(blank=True)
+    kitchen_nav_items = models.JSONField(default=list, blank=True)
 
     class Meta:
         ordering = ['name']

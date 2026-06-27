@@ -6,7 +6,7 @@ from accounts.models import TenantMembership
 class TenantSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tenant
-        fields = ['id', 'slug', 'name', 'banner', 'theme', 'is_active', 'created_at', 'qr_code_svg']
+        fields = ['id', 'slug', 'name', 'banner', 'theme', 'is_active', 'created_at', 'qr_code_svg', 'kitchen_nav_items']
         read_only_fields = ['id', 'created_at', 'qr_code_svg']
 
 

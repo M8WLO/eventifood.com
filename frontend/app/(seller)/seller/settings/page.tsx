@@ -10,12 +10,21 @@ const THEMES = [
   { value: 'forest', label: 'Forest', color: '#16a34a' },
 ]
 
+const KITCHEN_NAV_OPTIONS = [
+  { value: 'dashboard', label: 'Dashboard', icon: '🏠', hint: 'Today\'s summary' },
+  { value: 'menu', label: 'Menu editor', icon: '🍽️', hint: 'Edit products & categories' },
+  { value: 'inventory', label: 'Inventory', icon: '📦', hint: 'Stock levels' },
+  { value: 'analytics', label: 'Analytics', icon: '📊', hint: 'Sales & revenue' },
+  { value: 'settings', label: 'Settings', icon: '⚙️', hint: 'Store settings' },
+]
+
 interface Tenant {
   name: string
   slug: string
   theme: string
   qr_code_svg: string
   banner: string | null
+  kitchen_nav_items: string[]
 }
 
 interface Subscription {
@@ -31,11 +40,15 @@ export default function SettingsPage() {
   const [form, setForm] = useState({ name: '', theme: 'default' })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [kitchenNav, setKitchenNav] = useState<string[]>([])
+  const [kitchenNavSaving, setKitchenNavSaving] = useState(false)
+  const [kitchenNavSaved, setKitchenNavSaved] = useState(false)
 
   useEffect(() => {
     api.get('/api/tenants/me/').then((r) => {
       setTenant(r.data)
       setForm({ name: r.data.name, theme: r.data.theme })
+      setKitchenNav(r.data.kitchen_nav_items || [])
     })
     api.get('/api/subscriptions/status/').then((r) => setSubscription(r.data)).catch(() => {})
   }, [])
@@ -50,6 +63,24 @@ export default function SettingsPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const saveKitchenNav = async () => {
+    setKitchenNavSaving(true)
+    try {
+      const { data } = await api.patch('/api/tenants/me/', { kitchen_nav_items: kitchenNav })
+      setTenant(data)
+      setKitchenNavSaved(true)
+      setTimeout(() => setKitchenNavSaved(false), 3000)
+    } finally {
+      setKitchenNavSaving(false)
+    }
+  }
+
+  const toggleKitchenNav = (value: string) => {
+    setKitchenNav((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    )
   }
 
   const downloadSVG = () => {
@@ -136,11 +167,11 @@ export default function SettingsPage() {
       </div>
 
       {/* Kitchen board */}
-      <div className="card">
-        <h2 className="font-semibold text-gray-700 mb-3">Kitchen board</h2>
-        <p className="text-sm text-gray-500 mb-4">
-          Open the kitchen display in kiosk mode — covers the sidebar so kitchen staff only see the board.
-          Use this on a dedicated kitchen tablet or secondary screen.
+      <div className="card space-y-5">
+        <h2 className="font-semibold text-gray-700">Kitchen board</h2>
+        <p className="text-sm text-gray-500">
+          Open the kitchen display in kiosk mode on a dedicated tablet or secondary screen.
+          Kitchen staff see only the board — orders land and get marked ready from here.
         </p>
         <div className="flex gap-3">
           <button
@@ -158,9 +189,37 @@ export default function SettingsPage() {
             Kitchen-only login page
           </a>
         </div>
-        <p className="text-xs text-gray-400 mt-3">
-          Share the kitchen-only login link with kitchen staff — they can log in and see only the board, not menu or settings.
-        </p>
+
+        {/* Kitchen nav visibility */}
+        <div className="border-t border-gray-100 pt-5">
+          <h3 className="text-sm font-semibold text-gray-700 mb-1">Sidebar access in kiosk mode</h3>
+          <p className="text-sm text-gray-500 mb-4">
+            Choose which sections kitchen staff can navigate to from the board.
+            Untick all to show the board only — no sidebar.
+          </p>
+          <div className="space-y-2">
+            {KITCHEN_NAV_OPTIONS.map((opt) => (
+              <label key={opt.value} className="flex items-center gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={kitchenNav.includes(opt.value)}
+                  onChange={() => toggleKitchenNav(opt.value)}
+                  className="w-4 h-4 rounded text-brand-600"
+                />
+                <span className="text-base">{opt.icon}</span>
+                <span className="text-sm font-medium text-gray-800 group-hover:text-gray-900">{opt.label}</span>
+                <span className="text-xs text-gray-400">{opt.hint}</span>
+              </label>
+            ))}
+          </div>
+          <button
+            onClick={saveKitchenNav}
+            disabled={kitchenNavSaving}
+            className="btn-primary mt-4 text-sm"
+          >
+            {kitchenNavSaving ? 'Saving…' : kitchenNavSaved ? 'Saved ✓' : 'Save kitchen settings'}
+          </button>
+        </div>
       </div>
 
       {/* Subscription */}
