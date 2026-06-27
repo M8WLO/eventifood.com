@@ -1,0 +1,42 @@
+version: '3.9'
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: eventifood
+      POSTGRES_USER: eventifood
+      POSTGRES_PASSWORD: eventifood
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=eventifood.settings.development
+      - DATABASE_URL=postgresql://eventifood:eventifood@db:5432/eventifood
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - TEST_MODE=True
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    command: npm run dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - BASE_DOMAIN=localhost
+
+volumes:
+  pgdata:
