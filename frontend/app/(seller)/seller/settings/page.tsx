@@ -182,7 +182,6 @@ export default function SettingsPage() {
         })
         setTenant(data)
         setLogoFile(null)
-        setLogoPreviewUrl(null)
         setLogoSaved(true)
         setTimeout(() => setLogoSaved(false), 3000)
       } finally {
@@ -274,7 +273,7 @@ export default function SettingsPage() {
                 style={{ objectPosition: `center ${logoCropY}%` }}
               />
             </div>
-            {logoPreviewUrl && (
+            {logoPreviewUrl && logoFile && (
               <div className="space-y-1">
                 <label className="text-xs text-gray-500 font-medium">Vertical position</label>
                 <input
