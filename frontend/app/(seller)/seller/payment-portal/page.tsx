@@ -83,8 +83,12 @@ export default function PaymentPortalPage() {
     if (!selectedPlanId) return
     setPlanSaving(true)
     try {
-      const { data } = await api.post('/api/subscriptions/my-plan/', { plan_id: selectedPlanId })
-      setTenantPlan(data)
+      const [planRes, statusRes] = await Promise.all([
+        api.post('/api/subscriptions/my-plan/', { plan_id: selectedPlanId }),
+        api.get('/api/payments/status/'),
+      ])
+      setTenantPlan(planRes.data)
+      setStatus(statusRes.data)
       setPlanSaved(true)
       setTimeout(() => setPlanSaved(false), 3000)
     } finally {
@@ -194,15 +198,15 @@ export default function PaymentPortalPage() {
         )}
       </div>
 
-      {/* ── Next step prompt after plan switch ──────────────────── */}
-      {!isPayg && !status.stripe_onboarding_complete && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-4 flex items-start gap-3">
-          <span className="text-2xl shrink-0">👇</span>
+      {/* ── Subscription payment warning ──────────────────────── */}
+      {!isPayg && tenantPlan?.plan && !status.paypal_onboarding_complete && !status.gocardless_enabled && (
+        <div className="bg-amber-50 border border-amber-300 rounded-xl px-4 py-4 flex items-start gap-3">
+          <span className="text-2xl shrink-0">⚠️</span>
           <div>
-            <p className="text-sm font-semibold text-blue-800">Next step: connect a payment method</p>
-            <p className="text-sm text-blue-700 mt-0.5">
-              Your plan is active. To accept card payments from customers, connect Stripe below.
-              You can also add SumUp, PayPal, or GoCardless.
+            <p className="text-sm font-semibold text-amber-900">Subscription payment not set up</p>
+            <p className="text-sm text-amber-800 mt-0.5">
+              You are on the <strong>{tenantPlan.plan.name}</strong> plan but have not set up how you will pay your subscription.
+              Set up PayPal or GoCardless below so your plan stays active.
             </p>
           </div>
         </div>
