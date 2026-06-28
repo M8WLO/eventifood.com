@@ -50,7 +50,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
+    <div className="h-screen flex bg-gray-50 overflow-hidden">
       {/* Sidebar */}
       <aside className="w-56 bg-white border-r border-gray-100 flex flex-col shrink-0">
         <div className="px-4 py-5 border-b border-gray-100">
@@ -87,7 +87,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="flex-1 overflow-auto flex flex-col">{children}</main>
     </div>
   )
 }

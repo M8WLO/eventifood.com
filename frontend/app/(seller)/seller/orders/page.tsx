@@ -68,33 +68,43 @@ export default function OrdersPage() {
   if (loading) return <div className="p-8 text-gray-400">Loading orders…</div>
 
   return (
-    <div className="p-8">
-      <div className="mb-6">
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Page title — pinned */}
+      <div className="px-8 pt-8 pb-4 shrink-0 bg-gray-50 border-b border-gray-100">
         <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+      {/* Two columns, each with a pinned header + scrollable list */}
+      <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2 gap-0 md:divide-x divide-gray-100">
         {/* Placed / Preparing */}
-        <div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <div className="flex flex-col min-h-0 px-6 pt-5 pb-4">
+          <h2 className="shrink-0 text-sm font-semibold text-gray-500 uppercase tracking-wide pb-3 mb-1 border-b border-gray-100">
             Placed / Preparing ({placed.length})
           </h2>
-          <div className="space-y-3">
+          <div
+            className="flex-1 min-h-0 overflow-y-auto touch-pan-y space-y-3 pr-1 pt-2"
+            style={{ scrollbarWidth: 'auto', scrollbarColor: '#d1d5db #f3f4f6' }}
+          >
             {placed.map((o) => (
               <OrderCard key={o.id} order={o} onStatus={updateStatus} nextStatus="ready" nextLabel="Mark ready ✓" />
             ))}
-            {placed.length === 0 && <p className="text-gray-400 text-sm">No active orders</p>}
+            {placed.length === 0 && <p className="text-gray-400 text-sm py-4">No active orders</p>}
           </div>
         </div>
+
         {/* Ready */}
-        <div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <div className="flex flex-col min-h-0 px-6 pt-5 pb-4">
+          <h2 className="shrink-0 text-sm font-semibold text-gray-500 uppercase tracking-wide pb-3 mb-1 border-b border-gray-100">
             Ready ({ready.length})
           </h2>
-          <div className="space-y-3">
+          <div
+            className="flex-1 min-h-0 overflow-y-auto touch-pan-y space-y-3 pr-1 pt-2"
+            style={{ scrollbarWidth: 'auto', scrollbarColor: '#d1d5db #f3f4f6' }}
+          >
             {ready.map((o) => (
               <OrderCard key={o.id} order={o} onStatus={updateStatus} nextStatus="collected" nextLabel="Mark collected" />
             ))}
-            {ready.length === 0 && <p className="text-gray-400 text-sm">No orders ready</p>}
+            {ready.length === 0 && <p className="text-gray-400 text-sm py-4">No orders ready</p>}
           </div>
         </div>
       </div>
