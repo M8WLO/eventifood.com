@@ -454,9 +454,17 @@ export default function SettingsPage() {
         {subscription ? (
           <>
             <div className="space-y-2 text-sm pb-4 border-b border-gray-100">
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <span className="text-gray-500">Current plan</span>
-                <span className="font-medium">{subscription.plan_tier?.name ?? subscription.plan.replace('_', ' ')}</span>
+                {subscription.plan_tier ? (
+                  <span className="font-semibold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full text-xs">
+                    {subscription.plan_tier.name}
+                  </span>
+                ) : (
+                  <span className="font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full text-xs">
+                    Pay As You Go
+                  </span>
+                )}
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Status</span>
@@ -464,67 +472,88 @@ export default function SettingsPage() {
                   {subscription.status}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Annual cost</span>
-                <span className="font-medium">£{subscription.annual_cost}</span>
-              </div>
-              {subscription.next_billing_date && (
+              {subscription.plan_tier ? (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Annual cost</span>
+                    <span className="font-medium">£{Number(subscription.annual_cost).toFixed(2)}</span>
+                  </div>
+                  {subscription.next_billing_date && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Next billing</span>
+                      <span className="font-medium">{subscription.next_billing_date}</span>
+                    </div>
+                  )}
+                </>
+              ) : (
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Next billing</span>
-                  <span className="font-medium">{subscription.next_billing_date}</span>
+                  <span className="text-gray-500">Platform fee</span>
+                  <span className="font-medium text-gray-700">2% per order · no monthly charge</span>
                 </div>
               )}
             </div>
 
-            {plans.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">Change plan</h3>
-                <div className="space-y-2">
-                  {plans.map((plan) => (
-                    <label
-                      key={plan.id}
-                      className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedPlanId === plan.id ? 'border-brand-500 bg-brand-50' : 'border-gray-100 hover:border-gray-200'}`}
-                    >
-                      <input
-                        type="radio"
-                        name="plan"
-                        checked={selectedPlanId === plan.id}
-                        onChange={() => setSelectedPlanId(plan.id)}
-                        className="mt-1"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-gray-900">{plan.name}</span>
-                          {plan.is_highlighted && (
-                            <span className="text-xs bg-brand-100 text-brand-700 px-1.5 py-0.5 rounded font-medium">Popular</span>
+            <div className="border-t border-gray-100 pt-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Switch plan</h3>
+              {plans.length > 0 ? (
+                <>
+                  <div className="space-y-2">
+                    {plans.map((plan) => (
+                      <label
+                        key={plan.id}
+                        className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedPlanId === plan.id ? 'border-brand-500 bg-brand-50' : 'border-gray-100 hover:border-gray-200'}`}
+                      >
+                        <input
+                          type="radio"
+                          name="plan"
+                          checked={selectedPlanId === plan.id}
+                          onChange={() => setSelectedPlanId(plan.id)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-gray-900">{plan.name}</span>
+                            {plan.is_highlighted && (
+                              <span className="text-xs bg-brand-100 text-brand-700 px-1.5 py-0.5 rounded font-medium">Popular</span>
+                            )}
+                          </div>
+                          {plan.description && <p className="text-xs text-gray-500 mt-0.5">{plan.description}</p>}
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            £{Number(plan.monthly_price).toFixed(2)}/mo · £{Number(plan.annual_price).toFixed(2)}/yr
+                          </p>
+                          {plan.features?.length > 0 && (
+                            <ul className="mt-1 space-y-0.5">
+                              {plan.features.map((f, i) => (
+                                <li key={i} className="text-xs text-gray-500 flex items-center gap-1">
+                                  <span className="text-green-500">✓</span> {f}
+                                </li>
+                              ))}
+                            </ul>
                           )}
                         </div>
-                        {plan.description && <p className="text-xs text-gray-500 mt-0.5">{plan.description}</p>}
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          £{Number(plan.monthly_price).toFixed(2)}/mo · £{Number(plan.annual_price).toFixed(2)}/yr
-                        </p>
-                        {plan.features?.length > 0 && (
-                          <ul className="mt-1 space-y-0.5">
-                            {plan.features.map((f, i) => (
-                              <li key={i} className="text-xs text-gray-500 flex items-center gap-1">
-                                <span className="text-green-500">✓</span> {f}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    </label>
-                  ))}
+                      </label>
+                    ))}
+                  </div>
+                  <button
+                    onClick={savePlan}
+                    disabled={planSaving || selectedPlanId === subscription.plan_tier?.id}
+                    className="btn-primary mt-3 text-sm disabled:opacity-30"
+                  >
+                    {planSaving ? 'Saving…' : planSaved ? 'Saved ✓' : 'Switch plan'}
+                  </button>
+                </>
+              ) : (
+                <div className="bg-brand-50 rounded-xl px-4 py-3 text-sm text-brand-700">
+                  <p className="font-semibold">Pay As You Go</p>
+                  <p className="text-xs text-brand-600 mt-0.5">
+                    2% platform fee per order · no monthly charge · Stripe processing fees apply separately
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    To discuss alternative plan options, contact support.
+                  </p>
                 </div>
-                <button
-                  onClick={savePlan}
-                  disabled={planSaving || selectedPlanId === subscription.plan_tier?.id}
-                  className="btn-primary mt-3 text-sm disabled:opacity-30"
-                >
-                  {planSaving ? 'Saving…' : planSaved ? 'Saved ✓' : 'Change plan'}
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </>
         ) : (
           <p className="text-sm text-gray-400">No subscription found.</p>
