@@ -159,19 +159,20 @@ export default function StorefrontPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
       {/* Header */}
-      <header style={{ backgroundColor: colors.primary }} className="text-white px-4 py-6 text-center shadow">
-        {banner ? (
-          <div className="flex flex-col items-center gap-3">
-            <img src={banner} alt={storeName} className="h-20 max-w-xs object-contain rounded-xl" />
-            <p className="text-sm opacity-80">Scan to order · Collect when ready</p>
+      {banner ? (
+        <header className="relative w-full shadow" style={{ height: 180 }}>
+          <img src={banner} alt={storeName} className="w-full h-full object-cover" />
+          <div className="absolute inset-x-0 bottom-0 px-4 py-2 text-center"
+               style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 100%)' }}>
+            <p className="text-white text-xs opacity-90">Scan to order · Collect when ready</p>
           </div>
-        ) : (
-          <>
-            <h1 className="text-2xl font-extrabold">{storeName}</h1>
-            <p className="text-sm opacity-80 mt-1">Scan to order · Collect when ready</p>
-          </>
-        )}
-      </header>
+        </header>
+      ) : (
+        <header style={{ backgroundColor: colors.primary }} className="text-white px-4 py-6 text-center shadow">
+          <h1 className="text-2xl font-extrabold">{storeName}</h1>
+          <p className="text-sm opacity-80 mt-1">Scan to order · Collect when ready</p>
+        </header>
+      )}
 
       {/* Menu */}
       <main className="max-w-lg mx-auto px-4 py-6 space-y-4">
