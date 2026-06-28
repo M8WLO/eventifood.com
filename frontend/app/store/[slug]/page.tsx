@@ -164,13 +164,13 @@ export default function StorefrontPage() {
           <img src={banner} alt={storeName} className="w-full h-full object-cover" />
           <div className="absolute inset-x-0 bottom-0 px-4 py-2 text-center"
                style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 100%)' }}>
-            <p className="text-white text-xs opacity-90">Scan to order · Collect when ready</p>
+            <p className="text-white text-xs opacity-90">Collect your order when alerted</p>
           </div>
         </header>
       ) : (
         <header style={{ backgroundColor: colors.primary }} className="text-white px-4 py-6 text-center shadow">
           <h1 className="text-2xl font-extrabold">{storeName}</h1>
-          <p className="text-sm opacity-80 mt-1">Scan to order · Collect when ready</p>
+          <p className="text-sm opacity-80 mt-1">Collect your order when alerted</p>
         </header>
       )}
 
