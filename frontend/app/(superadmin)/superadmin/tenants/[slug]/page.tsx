@@ -43,21 +43,27 @@ interface Order {
 
 interface Sub {
   id: number
-  plan: string
+  plan: string             // billing cycle: 'monthly_split' | 'annual'
+  plan_tier: { id: number; name: string; billing_model: string } | null
   status: string
   annual_cost: string
   started_at: string | null
   next_billing_date: string | null
   stripe_customer_id: string
   stripe_subscription_id: string
-  plan_tier: { id: number; name: string } | null
+}
+
+interface PlanOption {
+  id: number
+  name: string
+  billing_model: string
 }
 
 const TABS = ['Overview', 'Users', 'Orders', 'Subscription'] as const
 type Tab = (typeof TABS)[number]
 
 const SUB_STATUSES = ['trialing', 'active', 'cancelled', 'past_due']
-const SUB_PLANS = ['monthly_split', 'annual']
+const BILLING_CYCLES = ['monthly_split', 'annual']
 const STATUS_BADGE: Record<string, string> = {
   placed:    'bg-green-50 text-green-700',
   preparing: 'bg-orange-50 text-orange-700',
@@ -76,6 +82,7 @@ export default function TenantDetailPage() {
   const [sub, setSub] = useState<Sub | null>(null)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
+  const [plans, setPlans] = useState<PlanOption[]>([])
 
   // User edit modal state
   const [editUser, setEditUser] = useState<Member | null>(null)
@@ -85,9 +92,14 @@ export default function TenantDetailPage() {
 
   // Sub form state
   const [subForm, setSubForm] = useState({
-    status: '', plan: '', annual_cost: '',
-    started_at: '', next_billing_date: '',
-    stripe_customer_id: '', stripe_subscription_id: '',
+    status: '',
+    plan: '',            // billing cycle: monthly_split | annual
+    plan_tier_id: '' as string | null,  // FK to Plan model (null = no plan)
+    annual_cost: '',
+    started_at: '',
+    next_billing_date: '',
+    stripe_customer_id: '',
+    stripe_subscription_id: '',
   })
 
   // Trial
@@ -104,11 +116,13 @@ export default function TenantDetailPage() {
     })
     api.get(`/api/tenants/admin/${slug}/members/`).then((r) => setMembers(r.data))
     api.get(`/api/tenants/admin/${slug}/orders/`).then((r) => setOrders(r.data)).catch(() => {})
+    api.get('/api/subscriptions/plans/admin/').then((r) => setPlans(r.data)).catch(() => {})
     api.get(`/api/subscriptions/admin/${slug}/`).then((r) => {
       setSub(r.data)
       setSubForm({
         status: r.data.status || '',
         plan: r.data.plan || '',
+        plan_tier_id: r.data.plan_tier?.id != null ? String(r.data.plan_tier.id) : null,
         annual_cost: r.data.annual_cost || '',
         started_at: r.data.started_at ? r.data.started_at.slice(0, 10) : '',
         next_billing_date: r.data.next_billing_date || '',
@@ -195,9 +209,14 @@ export default function TenantDetailPage() {
     setSaving(true)
     try {
       const { data } = await api.patch(`/api/subscriptions/admin/${slug}/`, {
-        ...subForm,
+        status: subForm.status,
+        plan: subForm.plan,
+        plan_tier_id: subForm.plan_tier_id ? Number(subForm.plan_tier_id) : null,
+        annual_cost: subForm.annual_cost,
         started_at: subForm.started_at || null,
         next_billing_date: subForm.next_billing_date || null,
+        stripe_customer_id: subForm.stripe_customer_id,
+        stripe_subscription_id: subForm.stripe_subscription_id,
       })
       setSub(data)
       flash('Subscription saved.')
@@ -461,17 +480,20 @@ export default function TenantDetailPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">#</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Customer</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Items</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
                   <th className="text-right px-4 py-3 font-medium text-gray-600">Total</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filteredOrders.map((o) => (
                   <tr key={o.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-xs text-gray-400">
+                      {new Date(o.created_at).toLocaleDateString('en-GB')} {new Date(o.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                    </td>
                     <td className="px-4 py-3 font-mono text-xs text-gray-500">
                       {o.daily_number != null ? `#${o.daily_number}` : o.order_number}
                     </td>
@@ -485,9 +507,6 @@ export default function TenantDetailPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right font-semibold text-gray-900">£{Number(o.total).toFixed(2)}</td>
-                    <td className="px-4 py-3 text-xs text-gray-400">
-                      {new Date(o.created_at).toLocaleDateString('en-GB')} {new Date(o.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                    </td>
                   </tr>
                 ))}
                 {filteredOrders.length === 0 && (
@@ -519,13 +538,26 @@ export default function TenantDetailPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Plan</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Plan tier</label>
+                  <select
+                    value={subForm.plan_tier_id ?? ''}
+                    onChange={(e) => setSubForm((p) => ({ ...p, plan_tier_id: e.target.value || null }))}
+                    className="input-field"
+                  >
+                    <option value="">— No plan —</option>
+                    {plans.map((pl) => (
+                      <option key={pl.id} value={String(pl.id)}>{pl.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Billing cycle</label>
                   <select
                     value={subForm.plan}
                     onChange={(e) => setSubForm((p) => ({ ...p, plan: e.target.value }))}
                     className="input-field"
                   >
-                    {SUB_PLANS.map((s) => <option key={s} value={s}>{s}</option>)}
+                    {BILLING_CYCLES.map((s) => <option key={s} value={s}>{s === 'monthly_split' ? 'Monthly' : 'Annual'}</option>)}
                   </select>
                 </div>
                 <div>
