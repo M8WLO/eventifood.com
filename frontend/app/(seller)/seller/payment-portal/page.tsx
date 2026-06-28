@@ -25,8 +25,22 @@ interface Plan {
   description: string
   features: string[]
   monthly_price: string
+  annual_price: string
   platform_fee_percent: string
+  billing_model: string
   is_highlighted: boolean
+}
+
+function planPriceLine(plan: Plan): string {
+  if (plan.billing_model === 'payg') {
+    return `${Number(plan.platform_fee_percent).toFixed(1)}% per transaction · no monthly charge`
+  }
+  const monthly = Number(plan.monthly_price)
+  const annual = Number(plan.annual_price)
+  if (monthly > 0 && annual > 0) return `£${monthly.toFixed(2)}/mo · £${annual.toFixed(2)}/yr`
+  if (monthly > 0) return `£${monthly.toFixed(2)}/month`
+  if (annual > 0) return `£${annual.toFixed(2)}/year`
+  return 'Contact us for pricing'
 }
 
 interface TenantPlanData {
@@ -104,9 +118,7 @@ export default function PaymentPortalPage() {
                 <span className="text-xs bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full font-semibold">Active</span>
               </div>
               <p className="text-xs text-brand-600">{tenantPlan.plan.description}</p>
-              <p className="text-xs text-brand-600 mt-0.5">
-                {Number(tenantPlan.plan.platform_fee_percent).toFixed(1)}% per transaction · no monthly charge
-              </p>
+              <p className="text-xs text-brand-600 mt-0.5">{planPriceLine(tenantPlan.plan)}</p>
               {tenantPlan.plan.features?.length > 0 && (
                 <ul className="mt-2 space-y-0.5">
                   {tenantPlan.plan.features.map((f, i) => (
@@ -157,7 +169,7 @@ export default function PaymentPortalPage() {
                       )}
                     </div>
                     {plan.description && <p className="text-xs text-gray-500 mt-0.5">{plan.description}</p>}
-                    <p className="text-xs text-gray-500 mt-0.5">{Number(plan.platform_fee_percent).toFixed(1)}% per transaction</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{planPriceLine(plan)}</p>
                     {plan.features?.length > 0 && (
                       <ul className="mt-1 space-y-0.5">
                         {plan.features.map((f, i) => (
