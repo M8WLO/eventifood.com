@@ -32,12 +32,18 @@ export default function AnalyticsPage() {
   const [dateTo, setDateTo] = useState(todayStr())
   const [report, setReport] = useState<Report | null>(null)
   const [loading, setLoading] = useState(true)
-  // Event mode: multiply figures by this fraction (e.g. 30% → 0.3)
-  const [eventPct, setEventPct] = useState<number>(100)
-  const [eventInput, setEventInput] = useState('100')
-  const [eventMode, setEventMode] = useState(false)
+  const [multiplier, setMultiplier] = useState(1)
 
-  const multiplier = eventMode ? eventPct / 100 : 1
+  useEffect(() => {
+    try {
+      const mode = localStorage.getItem('eventifood_event_mode')
+      const pct = localStorage.getItem('eventifood_event_pct')
+      if (mode === 'true' && pct) {
+        const n = parseFloat(pct)
+        if (!isNaN(n) && n > 0 && n <= 100) setMultiplier(n / 100)
+      }
+    } catch {}
+  }, [])
 
   useEffect(() => {
     setLoading(true)
@@ -50,14 +56,6 @@ export default function AnalyticsPage() {
       .finally(() => setLoading(false))
   }, [period, dateFrom, dateTo])
 
-  const applyEvent = () => {
-    const n = parseFloat(eventInput)
-    if (!isNaN(n) && n >= 0 && n <= 100) {
-      setEventPct(n)
-      setEventMode(true)
-    }
-  }
-
   const fmt = (val: string | number) =>
     `£${(Number(val) * multiplier).toFixed(2)}`
 
@@ -68,50 +66,7 @@ export default function AnalyticsPage() {
     <div className="p-8 max-w-4xl mx-auto">
       <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
         <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-
-        {/* Event mode toggle */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-sm">
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={eventInput}
-              onChange={(e) => setEventInput(e.target.value)}
-              className="w-14 text-sm text-center border-none outline-none bg-transparent"
-              placeholder="100"
-            />
-            <span className="text-gray-400 text-xs">%</span>
-          </div>
-          <button
-            onClick={() => {
-              if (eventMode && eventPct === 100) {
-                setEventMode(false)
-              } else {
-                applyEvent()
-              }
-            }}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${eventMode ? 'bg-amber-500 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-            title="Show a percentage of total figures (e.g. your share at a split event)"
-          >
-            Event
-          </button>
-          {eventMode && (
-            <button
-              onClick={() => { setEventMode(false); setEventInput('100') }}
-              className="text-xs text-gray-400 hover:text-gray-600"
-            >
-              Reset
-            </button>
-          )}
-        </div>
       </div>
-
-      {eventMode && (
-        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 text-sm text-amber-800">
-          Showing <span className="font-semibold">{eventPct}%</span> of all figures — event share mode active.
-        </div>
-      )}
 
       {/* Period selector */}
       <div className="flex gap-2 mb-4 flex-wrap">

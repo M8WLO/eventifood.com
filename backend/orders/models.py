@@ -3,6 +3,7 @@ from django.db import models
 
 class Order(models.Model):
     STATUS_CHOICES = [
+        ('pending_payment', 'Pending Payment'),
         ('placed', 'Placed'),
         ('preparing', 'Preparing'),
         ('ready', 'Ready'),
@@ -10,6 +11,8 @@ class Order(models.Model):
     ]
     tenant = models.ForeignKey('tenants.Tenant', on_delete=models.CASCADE, related_name='orders')
     order_number = models.CharField(max_length=20)
+    # trading_date: the calendar date the order belongs to (set at placement, survives midnight crossovers)
+    trading_date = models.DateField(null=True, blank=True)
     daily_number = models.PositiveIntegerField(null=True, blank=True)
     buyer_name = models.CharField(max_length=100)
     buyer_email = models.EmailField()
@@ -17,13 +20,19 @@ class Order(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='placed')
     total = models.DecimalField(max_digits=10, decimal_places=2)
     notes = models.TextField(blank=True)
+    stripe_session_id = models.CharField(max_length=200, blank=True, default='')
+    discount_code = models.CharField(max_length=50, blank=True, default='')
+    discount_amount = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     ready_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']
-        unique_together = ('tenant', 'order_number')
+        unique_together = [
+            ('tenant', 'order_number'),
+            ('tenant', 'trading_date', 'daily_number'),  # prevents duplicate daily numbers per day
+        ]
 
     def __str__(self):
         return f"Order {self.order_number} @ {self.tenant.slug} ({self.status})"

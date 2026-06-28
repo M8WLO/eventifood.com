@@ -585,13 +585,13 @@ export default function MenuPage() {
                                 className="input-field pl-7" placeholder="9.99"
                               />
                             </div>
-                            <div className="relative w-24 shrink-0">
+                            <div className="relative w-32 shrink-0">
                               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-300 text-xs">cost £</span>
                               <input
                                 type="number" min="0" step="0.01"
                                 value={v.cost_price}
                                 onChange={(e) => updateVar(idx, 'cost_price', e.target.value)}
-                                className="input-field pl-[3.2rem] text-xs" placeholder="4.00"
+                                className="input-field pl-[3.2rem]" placeholder="4.00"
                               />
                             </div>
                             <button

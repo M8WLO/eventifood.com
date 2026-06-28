@@ -55,6 +55,19 @@ class TenantMembership(models.Model):
         return f"{self.user.email} @ {self.tenant.slug} ({self.role})"
 
 
+class PlatformConfig(models.Model):
+    mfa_required = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Platform Config'
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 class EmailOTP(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='otps')
     code = models.CharField(max_length=6)

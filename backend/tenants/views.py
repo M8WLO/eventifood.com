@@ -131,6 +131,8 @@ class TenantAdminListView(APIView):
                 'subscription_status': sub_status,
                 'subscription_plan': sub_plan,
                 'order_count': Order.objects.filter(tenant=t).count(),
+                'trial_expires_at': t.trial_expires_at,
+                'is_service_live': t.is_service_live(),
             })
         return Response(result)
 

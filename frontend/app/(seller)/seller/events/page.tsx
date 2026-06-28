@@ -8,13 +8,18 @@ interface StaffEntry { name: string; hours: string; hourly_rate: string }
 interface ItemOverride { type: 'product' | 'variation'; id: number; price_override: string }
 interface PLSummary {
   order_count: number; revenue: number; cogs: number; gross_profit: number
-  pitch_cost: number; staffing_cost: number; net_profit: number
+  pitch_cost: number; pitch_percent: number; pitch_percent_cost: number
+  staffing_cost: number; net_profit: number
 }
 interface Event {
-  id: number; name: string; date: string; pitch_cost: string | null
+  id: number; name: string; date: string; pitch_cost: string | null; pitch_percent: string | null
   staff_entries: StaffEntry[]; item_overrides: ItemOverride[]
   is_active: boolean; created_at: string
   total_staffing_cost: number; pl_summary: PLSummary
+}
+interface EventPreset {
+  id: number; name: string; pitch_cost: string | null; pitch_percent: string | null
+  staff_entries: StaffEntry[]; item_overrides: ItemOverride[]
 }
 
 // Catalog types for item picker
@@ -30,7 +35,7 @@ function fmt(n: number) {
   return (n < 0 ? '-' : '') + '£' + abs.toFixed(2)
 }
 
-function PLCard({ pl, pitchCost, staffCost }: { pl: PLSummary; pitchCost: string; staffCost: number }) {
+function PLCard({ pl }: { pl: PLSummary }) {
   const profit = pl.net_profit
   return (
     <div className="mt-4 border-t border-gray-100 pt-4 space-y-1.5">
@@ -55,6 +60,12 @@ function PLCard({ pl, pitchCost, staffCost }: { pl: PLSummary; pitchCost: string
           <span className="text-gray-700">−{fmt(pl.pitch_cost)}</span>
         </div>
       )}
+      {pl.pitch_percent_cost > 0 && (
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">Organiser commission ({pl.pitch_percent}%)</span>
+          <span className="text-gray-700">−{fmt(pl.pitch_percent_cost)}</span>
+        </div>
+      )}
       {pl.staffing_cost > 0 && (
         <div className="flex justify-between text-sm">
           <span className="text-gray-500">Staffing</span>
@@ -71,22 +82,30 @@ function PLCard({ pl, pitchCost, staffCost }: { pl: PLSummary; pitchCost: string
 
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([])
+  const [presets, setPresets] = useState<EventPreset[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [globalExtras, setGlobalExtras] = useState<GlobalExtra[]>([])
   const [editing, setEditing] = useState<Event | null>(null)
   const [activating, setActivating] = useState<number | null>(null)
   const [deleting, setDeleting] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
+  // Preset save modal
+  const [savePresetModal, setSavePresetModal] = useState<Event | null>(null)
+  const [presetName, setPresetName] = useState('')
+  const [savingPreset, setSavingPreset] = useState(false)
+  const [deletingPreset, setDeletingPreset] = useState<number | null>(null)
 
   // Form state
   const [draftName, setDraftName] = useState('')
   const [draftDate, setDraftDate] = useState('')
   const [draftPitchCost, setDraftPitchCost] = useState('')
+  const [draftPitchPercent, setDraftPitchPercent] = useState('')
   const [draftStaff, setDraftStaff] = useState<StaffEntry[]>([{ ...EMPTY_STAFF }])
   const [draftItems, setDraftItems] = useState<ItemOverride[]>([])
 
   const load = useCallback(() => {
     api.get('/api/events/').then((r) => setEvents(r.data)).catch(() => {})
+    api.get('/api/events/presets/').then((r) => setPresets(r.data)).catch(() => {})
     api.get('/api/catalog/categories/').then((r) => setCategories(r.data)).catch(() => {})
     api.get('/api/catalog/global-extras/').then((r) => setGlobalExtras(r.data)).catch(() => {})
   }, [])
@@ -95,10 +114,11 @@ export default function EventsPage() {
 
   const startNew = () => {
     const today = new Date().toISOString().slice(0, 10)
-    setEditing({ id: 0, name: '', date: today, pitch_cost: null, staff_entries: [], item_overrides: [], is_active: false, created_at: '', total_staffing_cost: 0, pl_summary: { order_count: 0, revenue: 0, cogs: 0, gross_profit: 0, pitch_cost: 0, staffing_cost: 0, net_profit: 0 } })
+    setEditing({ id: 0, name: '', date: today, pitch_cost: null, pitch_percent: null, staff_entries: [], item_overrides: [], is_active: false, created_at: '', total_staffing_cost: 0, pl_summary: { order_count: 0, revenue: 0, cogs: 0, gross_profit: 0, pitch_cost: 0, pitch_percent: 0, pitch_percent_cost: 0, staffing_cost: 0, net_profit: 0 } })
     setDraftName('')
     setDraftDate(today)
     setDraftPitchCost('')
+    setDraftPitchPercent('')
     setDraftStaff([{ ...EMPTY_STAFF }])
     setDraftItems([])
   }
@@ -108,6 +128,7 @@ export default function EventsPage() {
     setDraftName(e.name)
     setDraftDate(e.date)
     setDraftPitchCost(e.pitch_cost ?? '')
+    setDraftPitchPercent(e.pitch_percent ?? '')
     setDraftStaff(e.staff_entries.length ? e.staff_entries.map(s => ({ ...s })) : [{ ...EMPTY_STAFF }])
     setDraftItems(e.item_overrides.map(i => ({ ...i, price_override: i.price_override ?? '' })) as ItemOverride[])
   }
@@ -139,6 +160,7 @@ export default function EventsPage() {
         name: draftName.trim(),
         date: draftDate,
         pitch_cost: draftPitchCost ? parseFloat(draftPitchCost) : null,
+        pitch_percent: draftPitchPercent ? parseFloat(draftPitchPercent) : null,
         staff_entries: draftStaff.filter(s => s.name.trim()).map(s => ({
           name: s.name.trim(),
           hours: parseFloat(s.hours) || 0,
@@ -187,6 +209,47 @@ export default function EventsPage() {
     }
   }
 
+  const loadPreset = (preset: EventPreset) => {
+    setDraftPitchCost(preset.pitch_cost ? String(preset.pitch_cost) : '')
+    setDraftPitchPercent(preset.pitch_percent ? String(preset.pitch_percent) : '')
+    setDraftStaff(preset.staff_entries.length ? preset.staff_entries.map(s => ({ ...s })) : [{ ...EMPTY_STAFF }])
+    setDraftItems(preset.item_overrides.map(i => ({ ...i, price_override: i.price_override ?? '' })) as ItemOverride[])
+  }
+
+  const openSavePreset = (event: Event) => {
+    setSavePresetModal(event)
+    setPresetName(event.name)
+  }
+
+  const savePreset = async () => {
+    if (!savePresetModal || !presetName.trim()) return
+    setSavingPreset(true)
+    try {
+      const payload = {
+        name: presetName.trim(),
+        pitch_cost: savePresetModal.pitch_cost ? parseFloat(String(savePresetModal.pitch_cost)) : null,
+        pitch_percent: savePresetModal.pitch_percent ? parseFloat(String(savePresetModal.pitch_percent)) : null,
+        staff_entries: savePresetModal.staff_entries,
+        item_overrides: savePresetModal.item_overrides,
+      }
+      const { data } = await api.post('/api/events/presets/', payload)
+      setPresets(prev => [...prev, data])
+      setSavePresetModal(null)
+    } finally {
+      setSavingPreset(false)
+    }
+  }
+
+  const deletePreset = async (id: number) => {
+    setDeletingPreset(id)
+    try {
+      await api.delete(`/api/events/presets/${id}/`)
+      setPresets(prev => prev.filter(p => p.id !== id))
+    } finally {
+      setDeletingPreset(null)
+    }
+  }
+
   // ---- Staff total calc ----
   const staffTotal = draftStaff.reduce((sum, s) => sum + (parseFloat(s.hours) || 0) * (parseFloat(s.hourly_rate) || 0), 0)
 
@@ -198,6 +261,24 @@ export default function EventsPage() {
           <button onClick={() => setEditing(null)} className="text-gray-400 hover:text-gray-700 text-2xl leading-none">←</button>
           <h1 className="text-xl font-bold text-gray-900">{editing.id ? `Edit: ${editing.name}` : 'New event'}</h1>
         </div>
+
+        {/* Load preset */}
+        {presets.length > 0 && (
+          <div className="flex items-center gap-3 bg-brand-50 border border-brand-100 rounded-xl px-4 py-3">
+            <span className="text-sm text-brand-700 font-medium">Load preset:</span>
+            <div className="flex flex-wrap gap-2">
+              {presets.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => loadPreset(p)}
+                  className="text-sm bg-white border border-brand-200 text-brand-700 px-3 py-1 rounded-lg hover:bg-brand-50 font-medium transition-colors"
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Basic details */}
         <div className="card space-y-4">
@@ -214,6 +295,10 @@ export default function EventsPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Pitch / site cost (£)</label>
               <input type="number" min={0} step="0.01" value={draftPitchCost} onChange={e => setDraftPitchCost(e.target.value)} className="input-field" placeholder="0.00" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Organiser commission (%)</label>
+              <input type="number" min={0} max={100} step="0.1" value={draftPitchPercent} onChange={e => setDraftPitchPercent(e.target.value)} className="input-field" placeholder="e.g. 10" />
             </div>
           </div>
         </div>
@@ -336,6 +421,7 @@ export default function EventsPage() {
   const activeEvent = events.find(e => e.is_active)
 
   return (
+    <>
     <div className="p-8 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -364,6 +450,35 @@ export default function EventsPage() {
         </div>
       )}
 
+      {/* Presets section */}
+      {presets.length > 0 && (
+        <div>
+          <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wide mb-3">Saved presets</h2>
+          <div className="space-y-2">
+            {presets.map(p => (
+              <div key={p.id} className="card py-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">{p.name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {p.item_overrides.length} item{p.item_overrides.length !== 1 ? 's' : ''}
+                    {p.pitch_cost ? ` · pitch £${Number(p.pitch_cost).toFixed(2)}` : ''}
+                    {p.pitch_percent ? ` · ${Number(p.pitch_percent)}% commission` : ''}
+                    {p.staff_entries.length > 0 ? ` · ${p.staff_entries.length} staff` : ''}
+                  </p>
+                </div>
+                <button
+                  onClick={() => deletePreset(p.id)}
+                  disabled={deletingPreset === p.id}
+                  className="text-xs text-red-400 hover:text-red-600 font-medium"
+                >
+                  {deletingPreset === p.id ? '…' : 'Delete'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {events.length === 0 ? (
         <div className="card text-center py-16">
           <p className="text-4xl mb-3">🎪</p>
@@ -388,6 +503,7 @@ export default function EventsPage() {
                       {new Date(event.date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
                       {event.item_overrides.length > 0 && ` · ${event.item_overrides.length} item${event.item_overrides.length !== 1 ? 's' : ''}`}
                       {event.pitch_cost && ` · pitch £${Number(event.pitch_cost).toFixed(2)}`}
+                      {event.pitch_percent && ` · ${Number(event.pitch_percent)}% commission`}
                       {event.total_staffing_cost > 0 && ` · staff £${event.total_staffing_cost.toFixed(2)}`}
                     </p>
                   </div>
@@ -405,6 +521,13 @@ export default function EventsPage() {
                     </button>
                     <button onClick={() => openEdit(event)} className="btn-secondary text-sm">Edit</button>
                     <button
+                      onClick={() => openSavePreset(event)}
+                      className="text-sm text-brand-600 hover:text-brand-800 font-medium px-2"
+                      title="Save as reusable preset"
+                    >
+                      Save preset
+                    </button>
+                    <button
                       onClick={() => deleteEvent(event.id)}
                       disabled={deleting === event.id}
                       className="text-sm text-red-400 hover:text-red-600 font-medium px-2"
@@ -414,12 +537,47 @@ export default function EventsPage() {
                   </div>
                 </div>
 
-                {hasData && <PLCard pl={pl} pitchCost={event.pitch_cost ?? ''} staffCost={event.total_staffing_cost} />}
+                {hasData && <PLCard pl={pl} />}
               </div>
             )
           })}
         </div>
       )}
     </div>
+
+    {/* Save-preset modal */}
+    {savePresetModal && (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+          <h3 className="font-bold text-gray-900">Save as preset</h3>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Preset name</label>
+            <input
+              value={presetName}
+              onChange={e => setPresetName(e.target.value)}
+              className="input-field"
+              placeholder="e.g. Christmas Market"
+              autoFocus
+            />
+          </div>
+          <p className="text-xs text-gray-400">
+            Saves the menu items, prices, pitch cost and staff template so you can load them into a new event day instantly.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={savePreset}
+              disabled={savingPreset || !presetName.trim()}
+              className="btn-primary flex-1"
+            >
+              {savingPreset ? 'Saving…' : 'Save preset'}
+            </button>
+            <button onClick={() => setSavePresetModal(null)} className="btn-secondary">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

@@ -3,6 +3,7 @@ from .views import (
     SubscriptionStatusView, StripeWebhookView,
     AdminPlanListView, PlanDetailView, PlanListView, AdminSubscriptionView,
     TenantPlanView, AdminTenantPlanView,
+    PayPalCreateSubscriptionView, PayPalReturnView, PayPalWebhookView,
 )
 
 urlpatterns = [
@@ -14,4 +15,8 @@ urlpatterns = [
     path('my-plan/', TenantPlanView.as_view(), name='tenant-plan'),
     path('admin/<slug:slug>/', AdminSubscriptionView.as_view(), name='subscription-admin-detail'),
     path('admin/<slug:slug>/plan/', AdminTenantPlanView.as_view(), name='tenant-plan-admin'),
+    # PayPal subscription flow
+    path('paypal/create/', PayPalCreateSubscriptionView.as_view(), name='paypal-create-subscription'),
+    path('paypal/return/', PayPalReturnView.as_view(), name='paypal-return'),
+    path('paypal/webhook/', PayPalWebhookView.as_view(), name='paypal-webhook'),
 ]

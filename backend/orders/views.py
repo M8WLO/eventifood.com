@@ -18,17 +18,20 @@ class IsSuperAdmin(BasePermission):
         return bool(request.user and request.user.is_authenticated and getattr(request.user, 'is_superadmin', False))
 
 
-def _next_order_numbers(tenant) -> tuple[str, int]:
-    """Return (order_number, daily_number) for a new order on this tenant."""
+def _next_order_numbers(tenant) -> tuple[str, int, 'date']:
+    """Return (order_number, daily_number, trading_date) for a new order on this tenant.
+    All three are assigned inside a single SELECT FOR UPDATE to prevent race conditions.
+    """
     from django.db import transaction
     with transaction.atomic():
-        # Lock all rows for this tenant to prevent concurrent duplicates
-        total_count = Order.objects.select_for_update().filter(tenant=tenant).count()
+        # Lock ALL orders for this tenant — ensures both total_count and daily_count are consistent
+        locked = list(Order.objects.select_for_update().filter(tenant=tenant).values('id', 'trading_date'))
+        total_count = len(locked)
         order_number = f"#{(total_count + 1):04d}"
         today = timezone.now().date()
-        daily_count = Order.objects.filter(tenant=tenant, created_at__date=today).count()
+        daily_count = sum(1 for o in locked if o['trading_date'] == today)
         daily_number = daily_count + 1
-    return order_number, daily_number
+    return order_number, daily_number, today
 
 
 class PlaceOrderView(APIView):
@@ -38,6 +41,12 @@ class PlaceOrderView(APIView):
         tenant = request.tenant
         if not tenant:
             return Response({'detail': 'Store not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not tenant.is_service_live():
+            return Response(
+                {'detail': 'This store is not currently accepting orders.'},
+                status=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
+            )
 
         serializer = PlaceOrderSerializer(data=request.data)
         if not serializer.is_valid():
@@ -86,12 +95,34 @@ class PlaceOrderView(APIView):
                 'resolved_extras': resolved_extras,
             })
 
-        order_number, daily_number = _next_order_numbers(tenant)
+        # Apply discount code if provided
+        raw_discount_code = request.data.get('discount_code', '').upper().strip()
+        discount_amount = Decimal('0.00')
+        applied_code = ''
+        if raw_discount_code:
+            from discounts.models import DiscountCode
+            try:
+                dc = DiscountCode.objects.get(tenant=tenant, code=raw_discount_code)
+                if dc.is_valid():
+                    if dc.discount_type == 'percentage':
+                        discount_amount = (total * dc.discount_value / 100).quantize(Decimal('0.01'))
+                    else:
+                        discount_amount = min(dc.discount_value, total)
+                    applied_code = dc.code
+                    DiscountCode.objects.filter(pk=dc.pk).update(times_used=dc.times_used + 1)
+            except DiscountCode.DoesNotExist:
+                pass
+        discounted_total = max(total - discount_amount, Decimal('0.01'))
+
+        order_number, daily_number, trading_date = _next_order_numbers(tenant)
         order = Order.objects.create(
             tenant=tenant,
             order_number=order_number,
             daily_number=daily_number,
-            total=total,
+            trading_date=trading_date,
+            total=discounted_total,
+            discount_code=applied_code,
+            discount_amount=discount_amount,
             **data,
         )
 
@@ -131,12 +162,19 @@ class SellerOrderListView(APIView):
         tenant = request.tenant
         if not tenant:
             return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
-        qs = Order.objects.filter(tenant=tenant).prefetch_related('items')
+        qs = Order.objects.filter(tenant=tenant).exclude(status='pending_payment').prefetch_related('items')
         status_filter = request.query_params.get('status')
         if status_filter:
             qs = qs.filter(status=status_filter)
         if request.query_params.get('board') == 'true':
-            qs = qs.filter(status__in=['placed', 'preparing', 'ready'])
+            from django.db.models import Q
+            cutoff = timezone.now() - timedelta(hours=18)
+            # Ready orders: always shown — customer may not have collected yet regardless of age
+            # Placed/preparing: 18-hour window to exclude stale test/old-session orders
+            qs = qs.filter(
+                Q(status='ready') |
+                Q(status__in=['placed', 'preparing'], created_at__gte=cutoff)
+            )
         return Response(OrderSerializer(qs, many=True).data)
 
 
@@ -161,6 +199,58 @@ class UpdateOrderStatusView(APIView):
         if old_status != 'ready' and new_status == 'ready':
             notify_order_ready(order)
         return Response(OrderSerializer(order).data)
+
+
+def _resequence_tenant(tenant, cutoff):
+    """Resequence daily_number + trading_date for a tenant's recent orders. Returns count."""
+    from django.db import transaction
+    with transaction.atomic():
+        orders = list(
+            Order.objects.select_for_update()
+            .filter(tenant=tenant, created_at__gte=cutoff)
+            .order_by('created_at')
+        )
+        # Clear first to avoid unique constraint conflicts during reassignment
+        for order in orders:
+            order.daily_number = None
+            order.save(update_fields=['daily_number'])
+        for i, order in enumerate(orders, start=1):
+            order.daily_number = i
+            order.trading_date = order.created_at.date()
+            order.save(update_fields=['daily_number', 'trading_date'])
+    return len(orders)
+
+
+class ResequenceDailyNumbersView(APIView):
+    """Superadmin: fix duplicate or missing daily_number values for one tenant.
+    POST /api/orders/admin/<slug>/resequence/
+    """
+    permission_classes = [IsSuperAdmin]
+
+    def post(self, request, slug):
+        from tenants.models import Tenant
+        tenant = Tenant.objects.filter(slug=slug).first()
+        if not tenant:
+            return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
+        cutoff = timezone.now() - timedelta(hours=18)
+        count = _resequence_tenant(tenant, cutoff)
+        return Response({'resequenced': count, 'tenant': slug})
+
+
+class ResequenceAllTenantsView(APIView):
+    """Superadmin: resequence daily_numbers for ALL tenants in one call.
+    POST /api/orders/admin/resequence-all/
+    """
+    permission_classes = [IsSuperAdmin]
+
+    def post(self, request):
+        from tenants.models import Tenant
+        cutoff = timezone.now() - timedelta(hours=18)
+        results = []
+        for tenant in Tenant.objects.all():
+            count = _resequence_tenant(tenant, cutoff)
+            results.append({'tenant': tenant.slug, 'resequenced': count})
+        return Response({'tenants': results, 'total': sum(r['resequenced'] for r in results)})
 
 
 class PlatformStatsView(APIView):

@@ -23,6 +23,11 @@ interface PlatformStats {
   all_time: number
 }
 
+interface PlatformConfig {
+  mfa_required: boolean
+  updated_at: string
+}
+
 const SUB_BADGE: Record<string, string> = {
   active:    'bg-green-50 text-green-700',
   trialing:  'bg-blue-50 text-blue-700',
@@ -35,6 +40,35 @@ export default function SuperAdminPage() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<PlatformStats | null>(null)
+  const [reseqMsg, setReseqMsg] = useState('')
+  const [reseqRunning, setReseqRunning] = useState(false)
+  const [platformConfig, setPlatformConfig] = useState<PlatformConfig | null>(null)
+  const [mfaSaving, setMfaSaving] = useState(false)
+
+  const resequenceAll = async () => {
+    if (!confirm('Resequence daily order numbers across all tenants? This fixes any duplicate #0001s for the last 18 hours of orders.')) return
+    setReseqRunning(true)
+    try {
+      const r = await api.post('/api/orders/admin/resequence-all/')
+      const total = r.data.total
+      setReseqMsg(`Done — resequenced ${total} orders across ${r.data.tenants.length} tenants.`)
+    } catch {
+      setReseqMsg('Resequence failed — check backend logs.')
+    } finally {
+      setReseqRunning(false)
+      setTimeout(() => setReseqMsg(''), 6000)
+    }
+  }
+
+  const toggleMfa = async (value: boolean) => {
+    setMfaSaving(true)
+    try {
+      const r = await api.patch('/api/auth/admin/platform-config/', { mfa_required: value })
+      setPlatformConfig(r.data)
+    } finally {
+      setMfaSaving(false)
+    }
+  }
 
   useEffect(() => {
     api.get('/api/tenants/admin/')
@@ -42,6 +76,9 @@ export default function SuperAdminPage() {
       .finally(() => setLoading(false))
     api.get('/api/orders/platform/stats/')
       .then((r) => setStats(r.data))
+      .catch(() => {})
+    api.get('/api/auth/admin/platform-config/')
+      .then((r) => setPlatformConfig(r.data))
       .catch(() => {})
   }, [])
 
@@ -54,7 +91,53 @@ export default function SuperAdminPage() {
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">
-      <h1 className="text-2xl font-bold text-gray-900">Platform admin</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">Platform admin</h1>
+        <div className="flex items-center gap-3">
+          {reseqMsg && <span className="text-sm text-green-700 font-medium">{reseqMsg}</span>}
+          <button
+            onClick={resequenceAll}
+            disabled={reseqRunning}
+            className="text-sm text-orange-600 border border-orange-200 hover:bg-orange-50 px-3 py-2 rounded-lg font-medium disabled:opacity-50"
+          >
+            {reseqRunning ? 'Resequencing…' : 'Fix order numbers (all tenants)'}
+          </button>
+        </div>
+      </div>
+
+      {/* Platform settings */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="font-semibold text-gray-800">Email MFA</h2>
+              <p className="text-sm text-gray-500 mt-0.5">
+                {platformConfig?.mfa_required
+                  ? 'All users must verify with an emailed code on every login.'
+                  : 'MFA is disabled — users log in with password only.'}
+              </p>
+            </div>
+            <button
+              onClick={() => platformConfig && toggleMfa(!platformConfig.mfa_required)}
+              disabled={mfaSaving || !platformConfig}
+              className={`relative shrink-0 w-11 h-6 rounded-full transition-colors disabled:opacity-50 ${
+                platformConfig?.mfa_required ? 'bg-brand-600' : 'bg-gray-200'
+              }`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                platformConfig?.mfa_required ? 'translate-x-5' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+          {platformConfig && (
+            <p className="text-xs text-gray-400 mt-3">
+              Status: <span className={`font-medium ${platformConfig.mfa_required ? 'text-green-600' : 'text-orange-500'}`}>
+                {platformConfig.mfa_required ? 'Enabled' : 'Disabled'}
+              </span>
+            </p>
+          )}
+        </div>
+      </div>
 
       {/* Platform stats */}
       <div>

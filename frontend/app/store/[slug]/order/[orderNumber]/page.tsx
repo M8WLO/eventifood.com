@@ -15,10 +15,11 @@ interface OrderStatus {
 }
 
 const STATUS_CONFIG: Record<string, { emoji: string; label: string; color: string }> = {
-  placed:    { emoji: '✅', label: 'Order placed!',         color: 'text-blue-600' },
-  preparing: { emoji: '🍳', label: 'Being prepared…',       color: 'text-yellow-600' },
-  ready:     { emoji: '🎉', label: 'Ready for collection!', color: 'text-green-600' },
-  collected: { emoji: '🙌', label: 'Collected — enjoy!',    color: 'text-gray-500' },
+  pending_payment: { emoji: '⏳', label: 'Confirming payment…', color: 'text-gray-500' },
+  placed:          { emoji: '✅', label: 'Order placed!',        color: 'text-blue-600' },
+  preparing:       { emoji: '🍳', label: 'Being prepared…',      color: 'text-yellow-600' },
+  ready:           { emoji: '🎉', label: 'Ready for collection!', color: 'text-green-600' },
+  collected:       { emoji: '🙌', label: 'Collected — enjoy!',   color: 'text-gray-500' },
 }
 
 export default function OrderStatusPage() {
@@ -125,9 +126,10 @@ export default function OrderStatusPage() {
 
   useEffect(() => {
     load()
-    const interval = setInterval(load, 15000)
+    // Poll faster while waiting for payment confirmation
+    const interval = setInterval(load, order?.status === 'pending_payment' ? 3000 : 15000)
     return () => clearInterval(interval)
-  }, [load])
+  }, [load, order?.status])
 
   if (loading) {
     return (

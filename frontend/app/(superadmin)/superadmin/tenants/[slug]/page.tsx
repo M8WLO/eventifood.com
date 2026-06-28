@@ -9,8 +9,10 @@ interface TenantInfo {
   slug: string
   name: string
   is_active: boolean
+  is_demo: boolean
   theme: string
   created_at: string
+  trial_expires_at: string | null
 }
 
 interface Member {
@@ -88,11 +90,18 @@ export default function TenantDetailPage() {
     stripe_customer_id: '', stripe_subscription_id: '',
   })
 
+  // Trial
+  const [trialDate, setTrialDate] = useState('')
+  const [trialSaving, setTrialSaving] = useState(false)
+
   // Order search
   const [orderSearch, setOrderSearch] = useState('')
 
   useEffect(() => {
-    api.get(`/api/tenants/admin/${slug}/`).then((r) => setTenant(r.data))
+    api.get(`/api/tenants/admin/${slug}/`).then((r) => {
+      setTenant(r.data)
+      setTrialDate(r.data.trial_expires_at || '')
+    })
     api.get(`/api/tenants/admin/${slug}/members/`).then((r) => setMembers(r.data))
     api.get(`/api/tenants/admin/${slug}/orders/`).then((r) => setOrders(r.data)).catch(() => {})
     api.get(`/api/subscriptions/admin/${slug}/`).then((r) => {
@@ -120,6 +129,32 @@ export default function TenantDetailPage() {
       flash(data.is_active ? 'Tenant activated.' : 'Tenant deactivated.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const toggleDemo = async () => {
+    if (!tenant) return
+    setSaving(true)
+    try {
+      const { data } = await api.patch(`/api/tenants/admin/${slug}/`, { is_demo: !tenant.is_demo })
+      setTenant(data)
+      flash(data.is_demo ? 'Demo mode enabled.' : 'Demo mode disabled.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const saveTrial = async () => {
+    setTrialSaving(true)
+    try {
+      const { data } = await api.patch(`/api/tenants/admin/${slug}/`, {
+        trial_expires_at: trialDate || null,
+      })
+      setTenant(data)
+      setTrialDate(data.trial_expires_at || '')
+      flash(trialDate ? `Trial set — expires ${new Date(trialDate).toLocaleDateString('en-GB')}.` : 'Trial date cleared.')
+    } finally {
+      setTrialSaving(false)
     }
   }
 
@@ -257,7 +292,75 @@ export default function TenantDetailPage() {
                   </button>
                 </div>
               </div>
+              <div>
+                <p className="text-gray-400 mb-1">Demo mode</p>
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${tenant.is_demo ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {tenant.is_demo ? 'Demo / test store' : 'Live store'}
+                  </span>
+                  <button
+                    onClick={toggleDemo}
+                    disabled={saving}
+                    className="text-xs text-gray-500 hover:text-gray-700 underline"
+                  >
+                    {tenant.is_demo ? 'Set live' : 'Set as demo'}
+                  </button>
+                </div>
+                {tenant.is_demo && (
+                  <p className="text-xs text-orange-600 mt-1">Customers see a demo banner. No payments are charged.</p>
+                )}
+              </div>
             </div>
+          </div>
+
+          <div className="card space-y-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="font-semibold text-gray-700">Free trial</h2>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Store accepts orders until this date. After expiry, a subscription is required.
+                </p>
+              </div>
+              {tenant.trial_expires_at && (() => {
+                const exp = new Date(tenant.trial_expires_at)
+                const today = new Date(); today.setHours(0,0,0,0)
+                const expired = exp < today
+                return (
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold shrink-0 ${expired ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
+                    {expired ? 'Expired' : 'Active trial'}
+                  </span>
+                )
+              })()}
+            </div>
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-gray-500 mb-1">Trial expires on</label>
+                <input
+                  type="date"
+                  value={trialDate}
+                  onChange={(e) => setTrialDate(e.target.value)}
+                  className="input-field"
+                />
+              </div>
+              <button
+                onClick={saveTrial}
+                disabled={trialSaving}
+                className="btn-primary shrink-0"
+              >
+                {trialSaving ? 'Saving…' : 'Save'}
+              </button>
+              {trialDate && (
+                <button
+                  onClick={() => { setTrialDate(''); }}
+                  className="shrink-0 text-xs text-gray-400 hover:text-red-500 underline pb-2"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            {!tenant.trial_expires_at && (
+              <p className="text-xs text-gray-400">No trial date set — store is accessible indefinitely.</p>
+            )}
           </div>
 
           <div className="card space-y-3">
@@ -330,12 +433,30 @@ export default function TenantDetailPage() {
       {/* Orders */}
       {tab === 'Orders' && (
         <div>
-          <input
-            value={orderSearch}
-            onChange={(e) => setOrderSearch(e.target.value)}
-            placeholder="Search by name or order number…"
-            className="input-field mb-4 max-w-sm"
-          />
+          <div className="flex items-center gap-4 mb-4">
+            <input
+              value={orderSearch}
+              onChange={(e) => setOrderSearch(e.target.value)}
+              placeholder="Search by name or order number…"
+              className="input-field max-w-sm"
+            />
+            <button
+              onClick={async () => {
+                if (!confirm(`Resequence daily order numbers for ${slug}? This will reassign #0001, #0002… to all orders from the last 18 hours in time order, fixing any duplicates.`)) return
+                try {
+                  const r = await api.post(`/api/orders/admin/${slug}/resequence/`)
+                  setMsg(`Resequenced ${r.data.resequenced} orders — reload the page to see updated numbers.`)
+                  setTimeout(() => setMsg(''), 5000)
+                } catch {
+                  setMsg('Resequence failed.')
+                }
+              }}
+              className="text-sm text-orange-600 border border-orange-200 hover:bg-orange-50 px-3 py-2 rounded-lg font-medium"
+            >
+              Fix duplicate order numbers
+            </button>
+            {msg && <span className="text-sm text-green-700">{msg}</span>}
+          </div>
           <div className="card p-0 overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">

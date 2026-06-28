@@ -11,7 +11,14 @@ Multi-tenant food truck ordering platform. Sellers get their own subdomain (acme
 
 ## Railway credentials
 - Project ID: `d7f20f14-393c-4f13-9d62-629552dabe04`
-- Token: stored in Claude memory (`reference_railway_eventifood.md`) — do NOT commit to repo
+- Project token: `0bb74da1-ec29-42e8-a429-8c2967bfe32e`
+- Account token: `90b10335-5fed-484a-b33f-72eb8745d95b`
+- Environment ID: `5018b358-536e-4115-850d-5088708468c0`
+- Backend service ID: `b64684a0-6243-4282-97e8-175658cadd18`
+- Frontend service ID: `2b53c16f-c6ec-4e79-abc4-0241aa77e372`
+- Postgres service ID: `3eefbab7-553d-4151-85b4-ce57e305d911`
+- Backend public URL: `https://backend-production-9e5c.up.railway.app`
+- Frontend public URL: `https://eventifood.com`
 
 ## Railway Volumes
 | Volume | Service | Mount path | Purpose |
@@ -30,14 +37,53 @@ docker-compose exec backend python manage.py migrate
 docker-compose exec backend python manage.py createsuperuser
 ```
 
-## Railway deploy (manual until GitHub auto-deploy connected)
+## Railway deploy
 
-```bash
+```powershell
 $env:RAILWAY_TOKEN = "0bb74da1-ec29-42e8-a429-8c2967bfe32e"
 Set-Location "C:\Users\ahugh\EventiFood"
-railway up --service backend
-railway up --service frontend
+railway up --service backend --detach
+railway up --service frontend --detach
 ```
+
+## Railway — set env vars on backend
+
+```powershell
+$env:RAILWAY_TOKEN = "0bb74da1-ec29-42e8-a429-8c2967bfe32e"
+Set-Location "C:\Users\ahugh\EventiFood"
+railway variables set KEY=value --service backend
+railway variables --service backend   # list all
+```
+
+## Railway — set env vars on frontend
+
+```powershell
+$env:RAILWAY_TOKEN = "0bb74da1-ec29-42e8-a429-8c2967bfe32e"
+Set-Location "C:\Users\ahugh\EventiFood"
+railway variables set KEY=value --service frontend
+```
+
+## Railway — run Django management commands
+
+```powershell
+$env:RAILWAY_TOKEN = "0bb74da1-ec29-42e8-a429-8c2967bfe32e"
+Set-Location "C:\Users\ahugh\EventiFood"
+railway run --service backend python manage.py migrate
+railway run --service backend python manage.py createsuperuser
+```
+
+## Payment provider env vars (already set on Railway backend)
+| Variable | Description |
+|---|---|
+| `PAYPAL_CLIENT_ID` | Live PayPal app client ID |
+| `PAYPAL_CLIENT_SECRET` | Live PayPal app secret |
+| `PAYPAL_ENV` | `live` |
+| `GOCARDLESS_ACCESS_TOKEN` | Live GoCardless access token |
+| `GOCARDLESS_ENV` | `live` |
+| `FRONTEND_URL` | `https://eventifood.com` |
+| `BACKEND_URL` | `https://backend-production-9e5c.up.railway.app` |
+
+Full credential values stored in `SECRETS.md` (gitignored) and Claude memory `reference_eventifood_secrets.md`.
 
 ## Architecture
 
@@ -88,20 +134,25 @@ Sellers always have MFA enabled. Login returns `mfa_required: true` + signed par
 
 ## Backlog
 
-### IN PROGRESS — UI Gaps (interrupted, resume these first)
-- [ ] Customer storefront: apply seller's chosen theme colour to header/buttons/basket bar
-- [ ] Customer storefront: display seller banner image in header
-- [ ] Customer storefront: render product photos as thumbnails
-- [ ] Customer storefront: render variation photos inline
-- [ ] Menu editor modal: add cost_price input for single-price products
-- [ ] Menu editor modal: add cost_price column to variation rows (field exists in state, not in UI)
-- [ ] Menu editor modal: add product photo upload (model + serializer has field, no UI)
-- [ ] Menu editor modal: add per-variation photo upload
-- [ ] Backend: add has_variations + base_price to ProductSellerSerializer fields
-- [ ] Seller settings: add "Open full-screen QR" button (opens /seller/display in new window)
-- [ ] New page: /seller/display — full-screen QR code for secondary monitor display
-- [ ] Basket page: apply theme colour from sessionStorage (set by store page)
-- [ ] Wire up real email backend (Resend or SMTP) for order confirmations + OTP
+### UI Gaps — Completed
+- [x] Customer storefront: apply seller's chosen theme colour to header/buttons/basket bar
+- [x] Customer storefront: display seller banner image in header
+- [x] Customer storefront: render product photos as thumbnails
+- [x] Customer storefront: render variation photos inline
+- [x] Menu editor modal: add cost_price input for single-price products
+- [x] Menu editor modal: add cost_price column to variation rows
+- [x] Menu editor modal: add product photo upload
+- [x] Menu editor modal: add per-variation photo upload
+- [x] Backend: add has_variations + base_price to ProductSellerSerializer fields
+- [x] Seller settings: add "Open full-screen QR" button (opens /seller/display in new window)
+- [x] New page: /seller/display — full-screen QR code for secondary monitor display
+- [x] Basket page: apply theme colour from sessionStorage — all 12 themes wired
+- [x] Wire up real email backend (Resend SMTP) for order confirmations + OTP
+- [x] Pricing section: plans + features loaded from DB; base features listed first in each card
+- [x] Order receipt email (HTML) on order placement
+- [x] "Order is hot & ready" HTML notification email
+- [x] Trial expiry: trial_expires_at on Tenant, is_service_live() gate, superadmin date picker
+- [x] Storefront trial-expired gate: shows "temporarily unavailable" if trial_expired=true
 
 ### PAYG / Stripe Connect (next major feature)
 

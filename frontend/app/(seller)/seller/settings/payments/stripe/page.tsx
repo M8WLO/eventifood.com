@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
+import { SetupGuide, relativeTime } from '@/components/SetupGuide'
 
 interface PaymentStatus {
   payment_mode: 'payg' | 'own'
@@ -29,7 +30,7 @@ export default function StripeSettingsPage() {
     setConnecting(true)
     setError('')
     try {
-      const r = await api.get('/api/payments/connect/')
+      const r = await api.post('/api/payments/connect/')
       window.location.href = r.data.url
     } catch {
       setError('Could not initiate Stripe connection. Please try again.')
@@ -80,7 +81,7 @@ export default function StripeSettingsPage() {
               <p className="font-semibold text-gray-900">Stripe account connected</p>
               <p className="text-xs text-gray-400">
                 Account ID: {stripe_account_id}
-                {connected_at && ` · Connected ${new Date(connected_at).toLocaleDateString()}`}
+                {connected_at && ` · Connected ${relativeTime(connected_at)}`}
               </p>
             </div>
           </div>
@@ -125,13 +126,27 @@ export default function StripeSettingsPage() {
         <div className="card space-y-4">
           <p className="text-sm text-gray-700">
             You haven&apos;t connected a Stripe account yet. Click below to be taken to Stripe where you can create or link an existing account.
-            Stripe will verify your identity and bank details — this usually takes a few minutes.
           </p>
           <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
             <li>Funds paid out directly to your bank account</li>
             <li>Stripe handles all card processing and PCI compliance</li>
             <li>View your payouts and transactions in the Stripe dashboard</li>
           </ul>
+          <SetupGuide
+            time="~5 minutes · payouts in 2–7 business days"
+            steps={[
+              { text: 'Click "Connect with Stripe" below — you\'ll be taken to Stripe\'s website.' },
+              { text: 'Log in to your existing Stripe account, or create a free one.', note: 'If you already have a Stripe account from another business, use the same login — Stripe will create a separate connected account for this store.' },
+              { text: 'Complete Stripe\'s identity verification: your name, date of birth, and home address.' },
+              { text: 'Add your bank account details so Stripe knows where to send payouts.' },
+              { text: 'Stripe redirects you back here once setup is complete. The badge will turn green.' },
+            ]}
+            notes={[
+              'Stripe may take a few hours to verify your identity on first setup — you\'ll get an email when it\'s approved.',
+              'Your first payout is typically held for 7 days as a fraud precaution. After that, payouts are on a 2-day rolling schedule.',
+              'You can view your balance, payouts, and transaction history at dashboard.stripe.com at any time.',
+            ]}
+          />
           <button
             onClick={handleConnect}
             disabled={connecting}

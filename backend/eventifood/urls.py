@@ -20,6 +20,7 @@ urlpatterns = [
     path('api/subscriptions/', include('subscriptions.urls')),
     path('api/payments/', include('payments.urls')),
     path('api/events/', include('events.urls')),
+    path('api/discounts/', include('discounts.urls')),
     # Serve media files in all environments (gunicorn handles this; no Nginx in Railway)
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
 ]

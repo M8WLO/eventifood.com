@@ -8,7 +8,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 
-from .models import User, EmailOTP
+from .models import User, EmailOTP, PlatformConfig
 from .serializers import RegisterSerializer, LoginSerializer, OTPVerifySerializer
 from .utils import generate_otp_code, send_otp_email, make_partial_token, verify_partial_token
 
@@ -55,7 +55,7 @@ class LoginView(APIView):
         if not user.is_active:
             return Response({'detail': 'Account is disabled.'}, status=status.HTTP_403_FORBIDDEN)
 
-        if user.mfa_enabled:
+        if PlatformConfig.get().mfa_required and user.mfa_enabled:
             code = generate_otp_code()
             EmailOTP.objects.create(
                 user=user,
@@ -242,3 +242,18 @@ class SetupInitialAdminView(APIView):
         u.set_password(password)
         u.save()
         return Response({'status': 'ok', 'created': created, 'email': u.email})
+
+
+class PlatformConfigView(APIView):
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request):
+        config = PlatformConfig.get()
+        return Response({'mfa_required': config.mfa_required, 'updated_at': config.updated_at})
+
+    def patch(self, request):
+        config = PlatformConfig.get()
+        if 'mfa_required' in request.data:
+            config.mfa_required = bool(request.data['mfa_required'])
+            config.save()
+        return Response({'mfa_required': config.mfa_required, 'updated_at': config.updated_at})

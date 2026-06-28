@@ -3,7 +3,10 @@
 import { useEffect, useState, useRef, Suspense } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import api from '@/lib/api'
+
+const QrScannerModal = dynamic(() => import('./QrScannerModal'), { ssr: false })
 
 interface Extra {
   id: number
@@ -86,6 +89,9 @@ function StorefrontContent() {
   const [waitTimeEnabled, setWaitTimeEnabled] = useState(false)
   const [estimatedWait, setEstimatedWait] = useState<number | null>(null)
   const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null)
+  const [isDemo, setIsDemo] = useState(false)
+  const [trialExpired, setTrialExpired] = useState(false)
+  const [scannerOpen, setScannerOpen] = useState(false)
   const qrAutoAdded = useRef(false)
 
   useEffect(() => {
@@ -101,10 +107,15 @@ function StorefrontContent() {
       setWaitTimeEnabled(!!tenantRes.data.wait_time_enabled)
       setEstimatedWait(tenantRes.data.estimated_wait_minutes ?? null)
       setActiveEvent(tenantRes.data.active_event || null)
+      setTrialExpired(!!tenantRes.data.trial_expired)
+      const demo = !!tenantRes.data.is_demo
+      setIsDemo(demo)
+      sessionStorage.setItem(`ef_demo_${slug}`, demo ? '1' : '0')
       const t = tenantRes.data.theme || 'default'
       setTheme(t)
       sessionStorage.setItem(`ef_theme_${slug}`, t)
       sessionStorage.setItem(`ef_name_${slug}`, tenantRes.data.name || '')
+      sessionStorage.setItem(`ef_payment_mode_${slug}`, tenantRes.data.payment_mode || 'payg')
       setExpanded(new Set())
     }).finally(() => setLoading(false))
   }, [slug])
@@ -143,6 +154,25 @@ function StorefrontContent() {
         extras,
       }]
     })
+  }
+
+  const onQrScan = (productId: number, varId: number | null): string | null => {
+    for (const cat of displayCategories) {
+      const product = cat.products.find((p) => p.id === productId && p.is_visible && !p.out_of_stock)
+      if (!product) continue
+      const availVars = product.variations.filter((v) => v.is_available)
+      if (varId) {
+        const variation = availVars.find((v) => v.id === varId)
+        if (variation) {
+          commitToBasket(product, variation, [])
+          return `${product.name}${variation.name !== 'Standard' ? ' — ' + variation.name : ''}`
+        }
+      } else if (availVars.length > 0) {
+        commitToBasket(product, availVars[0], [])
+        return product.name
+      }
+    }
+    return null
   }
 
   const confirmExtras = () => {
@@ -258,6 +288,18 @@ function StorefrontContent() {
     )
   }
 
+  if (trialExpired) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-center max-w-sm">
+          <div className="text-5xl mb-4">🔒</div>
+          <h1 className="text-xl font-bold text-gray-800 mb-2">{storeName || 'This store'} is temporarily unavailable</h1>
+          <p className="text-gray-500 text-sm">Online ordering is not available right now. Please speak to staff to place your order.</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
       {/* QR auto-add toast */}
@@ -275,11 +317,25 @@ function StorefrontContent() {
                style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 100%)' }}>
             <p className="text-white text-xs opacity-90">Collect your order when alerted</p>
           </div>
+          <button
+            onClick={() => setScannerOpen(true)}
+            className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-black/70 transition-colors"
+          >
+            <QrIcon />
+            Scan item
+          </button>
         </header>
       ) : (
-        <header style={{ backgroundColor: colors.primary }} className="text-white px-4 py-6 text-center shadow">
+        <header style={{ backgroundColor: colors.primary }} className="relative text-white px-4 py-6 text-center shadow">
           <h1 className="text-2xl font-extrabold">{storeName}</h1>
           <p className="text-sm opacity-80 mt-1">Collect your order when alerted</p>
+          <button
+            onClick={() => setScannerOpen(true)}
+            className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-white/30 transition-colors"
+          >
+            <QrIcon />
+            Scan item
+          </button>
         </header>
       )}
 
@@ -418,9 +474,16 @@ function StorefrontContent() {
         ))}
       </main>
 
+      {/* Demo mode banner */}
+      {isDemo && (
+        <div className="fixed bottom-0 left-0 right-0 z-10 bg-orange-500 text-white text-center text-xs font-semibold py-2 px-4">
+          Demo store — this is a test environment, no payments will be taken
+        </div>
+      )}
+
       {/* Sticky basket bar */}
       {basketCount > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-lg">
+        <div className={`fixed left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-lg ${isDemo ? 'bottom-8' : 'bottom-0'}`}>
           <Link
             href={`/store/${slug}/basket`}
             style={{ backgroundColor: colors.primary }}
@@ -433,6 +496,14 @@ function StorefrontContent() {
             <span>£{basketTotal.toFixed(2)}</span>
           </Link>
         </div>
+      )}
+
+      {/* QR scanner modal */}
+      {scannerOpen && (
+        <QrScannerModal
+          onScan={onQrScan}
+          onClose={() => setScannerOpen(false)}
+        />
       )}
 
       {/* Extras picker modal */}
@@ -488,6 +559,20 @@ function StorefrontContent() {
         </div>
       )}
     </div>
+  )
+}
+
+function QrIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="5" y="5" width="3" height="3" fill="currentColor" stroke="none" />
+      <rect x="16" y="5" width="3" height="3" fill="currentColor" stroke="none" />
+      <rect x="5" y="16" width="3" height="3" fill="currentColor" stroke="none" />
+    </svg>
   )
 }
 

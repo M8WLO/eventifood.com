@@ -2,6 +2,7 @@ from django.urls import path
 from .views import (
     RegisterView, LoginView, VerifyOTPView, ResendOTPView, LogoutView,
     SetupInitialAdminView, AdminUserDetailView, AdminUserPasswordResetView,
+    PlatformConfigView,
 )
 
 urlpatterns = [
@@ -13,4 +14,5 @@ urlpatterns = [
     path('setup-admin/', SetupInitialAdminView.as_view(), name='auth-setup-admin'),
     path('admin/users/<int:pk>/', AdminUserDetailView.as_view(), name='admin-user-detail'),
     path('admin/users/<int:pk>/reset-password/', AdminUserPasswordResetView.as_view(), name='admin-user-reset-password'),
+    path('admin/platform-config/', PlatformConfigView.as_view(), name='platform-config'),
 ]

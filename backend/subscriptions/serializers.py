@@ -7,12 +7,17 @@ class PlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = Plan
         fields = [
-            'id', 'name', 'slug', 'monthly_price', 'annual_price',
-            'platform_fee_percent', 'description', 'features', 'feature_flags',
+            'id', 'name', 'slug', 'billing_model',
+            'platform_fee_percent',
+            'monthly_price', 'annual_price',
+            'allowed_payment_methods',
+            'stripe_product_id', 'stripe_price_id_monthly', 'stripe_price_id_annual',
+            'paypal_plan_id_monthly', 'paypal_plan_id_annual',
+            'description', 'features', 'feature_flags',
             'max_products', 'max_categories', 'max_staff',
             'is_active', 'is_highlighted', 'display_order', 'created_at',
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'created_at', 'stripe_product_id', 'stripe_price_id_monthly', 'stripe_price_id_annual']
 
 
 class TenantPlanSerializer(serializers.ModelSerializer):
@@ -70,5 +75,6 @@ class AdminSubscriptionSerializer(serializers.ModelSerializer):
             'id', 'plan', 'plan_tier', 'plan_tier_id', 'status',
             'annual_cost', 'started_at', 'next_billing_date', 'created_at',
             'stripe_customer_id', 'stripe_subscription_id',
+            'paypal_subscription_id', 'payment_provider',
         ]
         read_only_fields = ['id', 'created_at']

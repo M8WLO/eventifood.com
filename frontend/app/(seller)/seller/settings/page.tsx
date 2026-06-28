@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import api from '@/lib/api'
+import { Tooltip } from '@/components/Tooltip'
 
 const THEMES = [
   { value: 'default', label: 'Purple',  color: '#7c3aed' },
@@ -39,37 +40,21 @@ interface Tenant {
   wait_time_enabled: boolean
 }
 
-interface TenantPlanData {
-  plan: {
-    id: number
-    name: string
-    description: string
-    features: string[]
-    feature_flags: string[]
-    monthly_price: string
-    platform_fee_percent: string
-    is_highlighted: boolean
-  } | null
-  can_change: boolean
-  days_until_change: number
-  next_change_allowed_at: string | null
-}
 
-interface Plan {
-  id: number
-  name: string
-  description: string
-  features: string[]
-  feature_flags: string[]
-  monthly_price: string
-  platform_fee_percent: string
-  is_highlighted: boolean
+function useLocalStorage(key: string, defaultValue: string): [string, (v: string) => void] {
+  const [value, setValue] = useState(defaultValue)
+  useEffect(() => {
+    try { const s = localStorage.getItem(key); if (s !== null) setValue(s) } catch {}
+  }, [key])
+  const set = (v: string) => {
+    setValue(v)
+    try { localStorage.setItem(key, v) } catch {}
+  }
+  return [value, set]
 }
 
 export default function SettingsPage() {
   const [tenant, setTenant] = useState<Tenant | null>(null)
-  const [tenantPlan, setTenantPlan] = useState<TenantPlanData | null>(null)
-  const [plans, setPlans] = useState<Plan[]>([])
   const [form, setForm] = useState({ name: '', theme: 'default' })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -82,9 +67,8 @@ export default function SettingsPage() {
   const [waitTimeEnabled, setWaitTimeEnabled] = useState(false)
   const [waitTimeSaving, setWaitTimeSaving] = useState(false)
   const [waitTimeSaved, setWaitTimeSaved] = useState(false)
-  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null)
-  const [planSaving, setPlanSaving] = useState(false)
-  const [planSaved, setPlanSaved] = useState(false)
+  const [eventShareMode, setEventShareMode] = useLocalStorage('eventifood_event_mode', 'false')
+  const [eventSharePct, setEventSharePct] = useLocalStorage('eventifood_event_pct', '100')
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null)
   const [logoCropY, setLogoCropY] = useState(50)
@@ -100,11 +84,6 @@ export default function SettingsPage() {
       setOrderMode(r.data.order_number_mode || 'daily')
       setWaitTimeEnabled(!!r.data.wait_time_enabled)
     })
-    api.get('/api/subscriptions/my-plan/').then((r) => {
-      setTenantPlan(r.data)
-      setSelectedPlanId(r.data.plan?.id ?? null)
-    }).catch(() => {})
-    api.get('/api/subscriptions/plans/').then((r) => setPlans(r.data)).catch(() => {})
   }, [])
 
   const save = async () => {
@@ -150,19 +129,6 @@ export default function SettingsPage() {
       setTimeout(() => setWaitTimeSaved(false), 3000)
     } finally {
       setWaitTimeSaving(false)
-    }
-  }
-
-  const savePlan = async () => {
-    if (!selectedPlanId) return
-    setPlanSaving(true)
-    try {
-      const { data } = await api.post('/api/subscriptions/my-plan/', { plan_id: selectedPlanId })
-      setTenantPlan(data)
-      setPlanSaved(true)
-      setTimeout(() => setPlanSaved(false), 3000)
-    } finally {
-      setPlanSaving(false)
     }
   }
 
@@ -257,7 +223,10 @@ export default function SettingsPage() {
 
         {/* Theme picker */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Colour theme</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+            Colour theme
+            <Tooltip text="Sets the accent colour on your ordering page — used for the header, buttons, and basket bar. Customers see this on their phone." />
+          </label>
           <div className="flex flex-wrap gap-2">
             {THEMES.map((t) => (
               <button
@@ -300,7 +269,10 @@ export default function SettingsPage() {
             </div>
             {logoPreviewUrl && logoFile && (
               <div className="space-y-1">
-                <label className="text-xs text-gray-500 font-medium">Vertical position</label>
+                <label className="text-xs text-gray-500 font-medium flex items-center gap-1">
+                  Vertical position
+                  <Tooltip text="Drag to choose which part of your image appears in the 9:4 header crop. Slide left to show the top of the image, right for the bottom." />
+                </label>
                 <input
                   type="range"
                   min={0}
@@ -342,7 +314,10 @@ export default function SettingsPage() {
 
       {/* Order number mode */}
       <div className="card space-y-4">
-        <h2 className="font-semibold text-gray-700">Order counter</h2>
+        <h2 className="font-semibold text-gray-700 flex items-center gap-1.5">
+          Order counter
+          <Tooltip text="Controls the order number shown on the kitchen board and on customer order tracking. Daily mode is easier for staff to call out during a busy service. Total mode gives a running record of all orders ever placed." />
+        </h2>
         <p className="text-sm text-gray-500">
           Controls how order numbers are displayed on the kitchen board and customer receipts.
         </p>
@@ -383,7 +358,10 @@ export default function SettingsPage() {
 
       {/* Live wait time */}
       <div className="card space-y-4">
-        <h2 className="font-semibold text-gray-700">Live wait time</h2>
+        <h2 className="font-semibold text-gray-700 flex items-center gap-1.5">
+          Live wait time
+          <Tooltip text="Shows customers a wait estimate on your ordering page. Calculated as the average time from order placed to order ready across your last 5 completed orders. Updates automatically after each order." />
+        </h2>
         <p className="text-sm text-gray-500">
           When enabled, customers see a real-time estimated wait banner on your ordering page.
           The estimate is the average time from order placed to order ready across your last 5 completed orders.
@@ -412,6 +390,52 @@ export default function SettingsPage() {
         <button onClick={saveWaitTime} disabled={waitTimeSaving} className="btn-primary text-sm">
           {waitTimeSaving ? 'Saving…' : waitTimeSaved ? 'Saved ✓' : 'Save wait time setting'}
         </button>
+      </div>
+
+      {/* Event share mode */}
+      <div className="card space-y-4">
+        <h2 className="font-semibold text-gray-700 flex items-center gap-1.5">
+          Analytics: event share
+          <Tooltip text="Use this when you trade as part of an event where the organiser takes a cut. Your analytics will scale down to show only your portion — it doesn't affect payments or orders, just the numbers displayed." />
+        </h2>
+        <p className="text-sm text-gray-500">
+          When enabled, analytics figures are scaled to your share of the event takings.
+          Useful when you trade as part of a shared event where the organiser takes a percentage.
+        </p>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <div className="relative">
+            <input
+              type="checkbox"
+              className="sr-only"
+              checked={eventShareMode === 'true'}
+              onChange={(e) => setEventShareMode(e.target.checked ? 'true' : 'false')}
+            />
+            <div className={`w-11 h-6 rounded-full transition-colors ${eventShareMode === 'true' ? 'bg-brand-600' : 'bg-gray-200'}`} />
+            <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${eventShareMode === 'true' ? 'translate-x-5' : 'translate-x-0'}`} />
+          </div>
+          <span className="text-sm font-medium text-gray-800">
+            {eventShareMode === 'true' ? 'Enabled' : 'Disabled'}
+          </span>
+        </label>
+        {eventShareMode === 'true' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
+              Your share (%)
+              <Tooltip text="Enter the percentage of takings you keep after the organiser's cut. E.g. if the event takes 30%, enter 70. Revenue and profit in analytics will be multiplied by this percentage." />
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              step={1}
+              value={eventSharePct}
+              onChange={(e) => setEventSharePct(e.target.value)}
+              className="input-field w-32"
+              placeholder="e.g. 70"
+            />
+            <p className="text-xs text-gray-400 mt-1">Analytics will show {eventSharePct}% of all revenue and profit figures.</p>
+          </div>
+        )}
       </div>
 
       {/* QR Code */}
@@ -462,7 +486,10 @@ export default function SettingsPage() {
 
         {/* Kitchen nav visibility */}
         <div className="border-t border-gray-100 pt-5">
-          <h3 className="text-sm font-semibold text-gray-700 mb-1">Sidebar access in kiosk mode</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1.5">
+            Sidebar access in kiosk mode
+            <Tooltip text="When the kitchen board is open in kiosk mode, staff can swipe or tap to reveal a side drawer. Choose which sections they can navigate to — untick all to lock the board view with no drawer at all." />
+          </h3>
           <p className="text-sm text-gray-500 mb-4">
             Choose which sections kitchen staff can navigate to from the board.
             Untick all to show the board only — no sidebar.
@@ -492,105 +519,17 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Payments */}
+      {/* Payment Portal link */}
       <div className="card">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-semibold text-gray-700">Payments</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Connect Stripe to accept card payments from customers.</p>
+            <h2 className="font-semibold text-gray-700">Payment Portal</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Manage your plan, Stripe, PayPal, SumUp, and GoCardless.</p>
           </div>
-          <Link href="/seller/settings/payments" className="btn-secondary text-sm shrink-0">
-            Manage →
+          <Link href="/seller/payment-portal" className="btn-secondary text-sm shrink-0">
+            Open →
           </Link>
         </div>
-      </div>
-
-      {/* Plan */}
-      <div className="card space-y-4">
-        <h2 className="font-semibold text-gray-700">Plan</h2>
-
-        {/* Current plan summary */}
-        <div className="bg-brand-50 rounded-xl px-4 py-3 text-sm">
-          {tenantPlan?.plan ? (
-            <>
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-brand-800">{tenantPlan.plan.name}</span>
-                <span className="text-xs bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full font-semibold">Active</span>
-              </div>
-              <p className="text-xs text-brand-600">{tenantPlan.plan.description}</p>
-              <p className="text-xs text-brand-600 mt-0.5">{Number(tenantPlan.plan.platform_fee_percent).toFixed(1)}% per transaction · no monthly charge</p>
-              {tenantPlan.plan.features?.length > 0 && (
-                <ul className="mt-2 space-y-0.5">
-                  {tenantPlan.plan.features.map((f, i) => (
-                    <li key={i} className="text-xs text-brand-700 flex items-center gap-1"><span className="text-green-500">✓</span>{f}</li>
-                  ))}
-                </ul>
-              )}
-            </>
-          ) : (
-            <>
-              <p className="font-semibold text-brand-800">No plan selected</p>
-              <p className="text-xs text-brand-600 mt-0.5">Choose a plan below to unlock features.</p>
-            </>
-          )}
-        </div>
-
-        {/* 30-day lock warning */}
-        {tenantPlan && !tenantPlan.can_change && tenantPlan.days_until_change > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
-            Plan can be changed in <span className="font-semibold">{tenantPlan.days_until_change} day{tenantPlan.days_until_change !== 1 ? 's' : ''}</span>. Plans are locked for 30 days after a change.
-          </div>
-        )}
-
-        {/* Plan picker */}
-        {plans.length > 0 && (
-          <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Switch plan</h3>
-            <div className="space-y-2">
-              {plans.map((plan) => (
-                <label
-                  key={plan.id}
-                  className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedPlanId === plan.id ? 'border-brand-500 bg-brand-50' : 'border-gray-100 hover:border-gray-200'}`}
-                >
-                  <input
-                    type="radio"
-                    name="plan"
-                    checked={selectedPlanId === plan.id}
-                    onChange={() => setSelectedPlanId(plan.id)}
-                    className="mt-1"
-                    disabled={!tenantPlan?.can_change}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-gray-900">{plan.name}</span>
-                      {plan.is_highlighted && (
-                        <span className="text-xs bg-brand-100 text-brand-700 px-1.5 py-0.5 rounded font-medium">Popular</span>
-                      )}
-                    </div>
-                    {plan.description && <p className="text-xs text-gray-500 mt-0.5">{plan.description}</p>}
-                    <p className="text-xs text-gray-500 mt-0.5">{Number(plan.platform_fee_percent).toFixed(1)}% per transaction</p>
-                    {plan.features?.length > 0 && (
-                      <ul className="mt-1 space-y-0.5">
-                        {plan.features.map((f, i) => (
-                          <li key={i} className="text-xs text-gray-500 flex items-center gap-1">
-                            <span className="text-green-500">✓</span> {f}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </label>
-              ))}
-            </div>
-            <button
-              onClick={savePlan}
-              disabled={planSaving || selectedPlanId === tenantPlan?.plan?.id || !tenantPlan?.can_change}
-              className="btn-primary mt-3 text-sm disabled:opacity-30"
-            >
-              {planSaving ? 'Saving…' : planSaved ? 'Saved ✓' : 'Switch plan'}
-            </button>
-          </div>
-        )}
       </div>
     </div>
   )

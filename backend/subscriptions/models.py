@@ -4,11 +4,31 @@ import datetime
 
 
 class Plan(models.Model):
+    BILLING_MODEL_CHOICES = [
+        ('payg', 'PAYG — % per transaction (Stripe Connect)'),
+        ('subscription', 'Subscription — monthly/annual recurring fee'),
+    ]
+    SUBSCRIPTION_METHODS = [
+        ('stripe', 'Stripe (card / digital wallet)'),
+        ('gocardless', 'GoCardless (direct debit)'),
+        ('paypal', 'PayPal Subscriptions'),
+    ]
     name = models.CharField(max_length=100)
     slug = models.SlugField(unique=True)
+    billing_model = models.CharField(max_length=20, choices=BILLING_MODEL_CHOICES, default='payg')
+    # PAYG: Stripe Connect application fee taken from each transaction
+    platform_fee_percent = models.DecimalField(max_digits=5, decimal_places=2, default=2.00)
+    # Subscription: recurring fee collected from seller
     monthly_price = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     annual_price = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    platform_fee_percent = models.DecimalField(max_digits=5, decimal_places=2, default=2.00)
+    # Which payment methods sellers can use to pay their subscription (JSON list of SUBSCRIPTION_METHODS keys)
+    allowed_payment_methods = models.JSONField(default=list)
+    # Stripe Subscription integration: auto-created via API when plan is saved
+    stripe_product_id = models.CharField(max_length=100, blank=True)
+    stripe_price_id_monthly = models.CharField(max_length=100, blank=True)
+    stripe_price_id_annual = models.CharField(max_length=100, blank=True)
+    paypal_plan_id_monthly = models.CharField(max_length=100, blank=True)
+    paypal_plan_id_annual = models.CharField(max_length=100, blank=True)
     description = models.CharField(max_length=255, blank=True)
     # Human-readable feature strings shown on the pricing page
     features = models.JSONField(default=list)
@@ -55,6 +75,24 @@ class TenantPlan(models.Model):
         else:
             self.next_change_allowed_at = timezone.now() + datetime.timedelta(days=30)
         self.save()
+        # Keep tenant.payment_mode in sync: payg plan → 'payg', subscription plan → 'own'
+        new_mode = 'payg' if plan.billing_model == 'payg' else 'own'
+        if self.tenant.payment_mode != new_mode:
+            self.tenant.payment_mode = new_mode
+            self.tenant.save(update_fields=['payment_mode'])
+        # On downgrade to PAYG, disable any alternative providers in the DB
+        if new_mode == 'payg':
+            provider = getattr(self.tenant, 'payment_provider', None)
+            if provider is not None:
+                fields = []
+                if provider.sumup_enabled:
+                    provider.sumup_enabled = False
+                    fields.append('sumup_enabled')
+                if provider.gocardless_enabled:
+                    provider.gocardless_enabled = False
+                    fields.append('gocardless_enabled')
+                if fields:
+                    provider.save(update_fields=fields)
 
 
 class Subscription(models.Model):
@@ -74,6 +112,8 @@ class Subscription(models.Model):
     status = models.CharField(max_length=20, choices=STATUS, default='trialing')
     stripe_subscription_id = models.CharField(max_length=100, blank=True)
     stripe_customer_id = models.CharField(max_length=100, blank=True)
+    paypal_subscription_id = models.CharField(max_length=100, blank=True)
+    payment_provider = models.CharField(max_length=20, blank=True)  # 'stripe' | 'paypal' | 'gocardless'
     annual_cost = models.DecimalField(max_digits=8, decimal_places=2, default=300.00)
     started_at = models.DateTimeField(null=True, blank=True)
     next_billing_date = models.DateField(null=True, blank=True)

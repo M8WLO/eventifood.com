@@ -24,12 +24,26 @@ class Tenant(models.Model):
         default='payg',
     )
     wait_time_enabled = models.BooleanField(default=False)
+    is_demo = models.BooleanField(default=False)
+    trial_expires_at = models.DateField(null=True, blank=True)
 
     class Meta:
         ordering = ['name']
 
     def __str__(self):
         return f"{self.name} ({self.slug})"
+
+    def is_service_live(self) -> bool:
+        """Return True if this tenant's store should accept orders."""
+        from django.utils import timezone
+        if not self.trial_expires_at:
+            return True
+        if self.trial_expires_at >= timezone.now().date():
+            return True
+        try:
+            return self.subscription.status == 'active'
+        except Exception:
+            return False
 
     def generate_qr_code(self):
         """Generate SVG QR code pointing to https://{slug}.eventifood.com and store it."""
