@@ -95,6 +95,13 @@ class AlternativeProviderView(APIView):
                 return Response({'detail': 'Add an API key before enabling SumUp.'}, status=status.HTTP_400_BAD_REQUEST)
             updated.append('sumup_enabled')
 
+        # PayPal
+        if 'paypal_merchant_id' in data:
+            email = data['paypal_merchant_id'].strip()
+            provider.paypal_merchant_id = email
+            provider.paypal_onboarding_complete = bool(email)
+            updated.extend(['paypal_merchant_id', 'paypal_onboarding_complete'])
+
         # GoCardless
         if 'gocardless_access_token' in data:
             provider.gocardless_access_token = data['gocardless_access_token'].strip()
