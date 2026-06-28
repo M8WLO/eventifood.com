@@ -13,12 +13,6 @@ interface MenuData {
   items: MenuItem[]; banner: string | null; store_name: string
 }
 
-const SIZE_CSS: Record<string, string> = {
-  a4: '210mm',
-  a3: '297mm',
-  a2: '420mm',
-}
-
 export default function PrintMenuPage() {
   const params = useParams()
   const id = params.id as string
@@ -33,73 +27,82 @@ export default function PrintMenuPage() {
   }, [id])
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <p className="text-gray-400">Loading menu…</p>
     </div>
   )
   if (error || !menu) return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <p className="text-gray-500">Menu not found.</p>
     </div>
   )
 
   const cols = menu.size === 'a2' ? 4 : menu.size === 'a3' ? 3 : 2
-  const pageWidth = SIZE_CSS[menu.size] || '210mm'
+  const pageSize = menu.size.toUpperCase()
 
   return (
     <>
       <style>{`
         @media print {
-          @page { size: ${menu.size.toUpperCase()}; margin: 12mm; }
-          body { margin: 0; }
+          @page { size: ${pageSize} portrait; margin: 12mm; }
+          html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
           .no-print { display: none !important; }
-          .print-page { box-shadow: none !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
+          .menu-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .item-card { break-inside: avoid; page-break-inside: avoid; }
+          .menu-grid { display: grid !important; }
         }
-        body { background: #f3f4f6; font-family: system-ui, sans-serif; }
-        .item-card { break-inside: avoid; page-break-inside: avoid; }
+        html, body { font-family: system-ui, sans-serif; background: #f3f4f6; }
       `}</style>
 
-      {/* Print button — hidden when printing */}
-      <div className="no-print fixed top-4 right-4 z-50 flex gap-2">
+      {/* Action bar — hidden when printing */}
+      <div className="no-print fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm px-6 py-3 flex items-center gap-3">
+        <div className="flex-1">
+          <p className="font-semibold text-gray-900">{menu.store_name} — {menu.name}</p>
+          <p className="text-xs text-gray-400">
+            {pageSize} · {menu.items.length} item{menu.items.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <p className="text-xs text-gray-400 mr-2 hidden sm:block">
+          In the dialog, choose <strong>Save as PDF</strong> as the destination
+        </p>
         <button
           onClick={() => window.print()}
-          className="bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-lg hover:bg-gray-700 transition-colors"
+          className="bg-gray-900 text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-gray-700 transition-colors"
         >
-          🖨️ Print
+          Download PDF
         </button>
         <button
           onClick={() => window.close()}
-          className="bg-white text-gray-600 text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+          className="text-sm text-gray-500 font-medium px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
         >
           Close
         </button>
       </div>
 
-      {/* Page */}
-      <div
-        className="print-page mx-auto my-8 bg-white shadow-2xl rounded-xl overflow-hidden"
-        style={{ width: pageWidth, maxWidth: '100%' }}
-      >
+      {/* Page content — padded top to clear the fixed action bar on screen */}
+      <div className="no-print" style={{ height: 64 }} />
+
+      {/* Menu — prints from here */}
+      <div className="bg-white mx-auto my-6 shadow-xl no-print-shadow" style={{ maxWidth: '900px' }}>
+
         {/* Header */}
-        <div className="bg-gray-900 text-white px-8 py-6">
-          <div className="flex items-center gap-6">
-            {menu.banner ? (
-              <img src={menu.banner} alt={menu.store_name} className="h-16 object-contain rounded-lg" style={{ maxWidth: 200 }} />
-            ) : (
-              <h1 className="text-3xl font-extrabold tracking-tight">{menu.store_name}</h1>
-            )}
-            <div className="flex-1" />
-            <div className="text-right">
-              <p className="text-white/60 text-xs uppercase tracking-widest mb-0.5">Menu</p>
-              <p className="text-white font-bold text-lg">{menu.name}</p>
-              <p className="text-white/50 text-xs mt-1">Scan any QR code to order on your phone</p>
-            </div>
+        <div className="menu-header bg-gray-900 text-white px-8 py-6 flex items-center gap-6">
+          {menu.banner ? (
+            <img src={menu.banner} alt={menu.store_name} className="h-16 object-contain rounded-lg" style={{ maxWidth: 200 }} />
+          ) : (
+            <h1 className="text-3xl font-extrabold tracking-tight">{menu.store_name}</h1>
+          )}
+          <div className="flex-1" />
+          <div className="text-right">
+            <p className="text-white/60 text-xs uppercase tracking-widest mb-0.5">Menu</p>
+            <p className="text-white font-bold text-lg">{menu.name}</p>
+            <p className="text-white/50 text-xs mt-1">Scan any QR code to order on your phone</p>
           </div>
         </div>
 
-        {/* Grid */}
+        {/* Item grid */}
         <div
-          className="p-6"
+          className="menu-grid p-6"
           style={{
             display: 'grid',
             gridTemplateColumns: `repeat(${cols}, 1fr)`,
@@ -109,14 +112,14 @@ export default function PrintMenuPage() {
           {menu.items.map((item) => (
             <div
               key={`${item.type}-${item.id}`}
-              className="item-card border border-gray-200 rounded-xl overflow-hidden flex flex-col"
+              className="item-card border border-gray-200 rounded-xl flex flex-col"
               style={{ background: '#fafafa' }}
             >
               {/* Photo */}
               {item.photo ? (
-                <img src={item.photo} alt={item.name} className="w-full object-cover" style={{ height: 120 }} />
+                <img src={item.photo} alt={item.name} className="w-full object-cover rounded-t-xl" style={{ height: 120 }} />
               ) : (
-                <div className="w-full flex items-center justify-center bg-gray-100" style={{ height: 72 }}>
+                <div className="w-full flex items-center justify-center bg-gray-100 rounded-t-xl" style={{ height: 72 }}>
                   <span className="text-3xl">🍽️</span>
                 </div>
               )}
@@ -129,9 +132,7 @@ export default function PrintMenuPage() {
                     <p className="text-gray-500 text-xs mt-0.5 leading-snug line-clamp-2">{item.description}</p>
                   )}
                 </div>
-
                 <div className="flex items-end justify-between gap-2 mt-auto pt-2 border-t border-gray-200">
-                  {/* Price */}
                   <div>
                     {item.price ? (
                       <p className="text-xl font-extrabold text-gray-900">£{Number(item.price).toFixed(2)}</p>
@@ -139,8 +140,6 @@ export default function PrintMenuPage() {
                       <p className="text-sm text-gray-400 italic">See menu</p>
                     )}
                   </div>
-
-                  {/* QR code */}
                   {item.qr_code_svg ? (
                     <div
                       className="shrink-0 [&>svg]:w-full [&>svg]:h-full"
@@ -148,8 +147,8 @@ export default function PrintMenuPage() {
                       dangerouslySetInnerHTML={{ __html: item.qr_code_svg }}
                     />
                   ) : (
-                    <div className="shrink-0 bg-gray-200 rounded flex items-center justify-center" style={{ width: 72, height: 72 }}>
-                      <span className="text-xs text-gray-400">No QR</span>
+                    <div className="shrink-0 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-400" style={{ width: 72, height: 72 }}>
+                      No QR
                     </div>
                   )}
                 </div>
@@ -164,6 +163,12 @@ export default function PrintMenuPage() {
           <p className="text-xs text-gray-300">{menu.store_name}</p>
         </div>
       </div>
+
+      <style>{`
+        @media screen {
+          .no-print-shadow { box-shadow: 0 10px 40px rgba(0,0,0,0.12); border-radius: 12px; overflow: hidden; margin-bottom: 48px; }
+        }
+      `}</style>
     </>
   )
 }

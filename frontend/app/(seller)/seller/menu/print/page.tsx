@@ -235,11 +235,11 @@ export default function PrintMenusPage() {
               <div className="flex items-center gap-2 shrink-0">
                 <button onClick={() => editMenu(m)} className="btn-secondary text-sm">Edit</button>
                 <Link
-                  href={`/seller/menu/print/${m.id}`}
+                  href={`/print-menu/${m.id}`}
                   target="_blank"
                   className="btn-primary text-sm"
                 >
-                  Print ↗
+                  Download PDF ↗
                 </Link>
                 <button
                   onClick={() => deleteMenu(m.id)}
