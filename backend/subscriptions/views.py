@@ -233,6 +233,10 @@ class TenantPlanView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
         obj.set_plan(plan, user=request.user)
+        # Keep Subscription.plan_tier in sync with TenantPlan
+        sub, _ = Subscription.objects.get_or_create(tenant=tenant, defaults={'status': 'trialing'})
+        sub.plan_tier = plan
+        sub.save(update_fields=['plan_tier'])
         return Response(TenantPlanSerializer(obj, context={'request': request}).data)
 
 
@@ -261,6 +265,10 @@ class AdminTenantPlanView(APIView):
             return Response({'detail': 'Plan not found.'}, status=status.HTTP_404_NOT_FOUND)
         obj, _ = TenantPlan.objects.get_or_create(tenant=tenant)
         obj.set_plan(plan, user=request.user)
+        # Keep Subscription.plan_tier in sync with TenantPlan
+        sub, _ = Subscription.objects.get_or_create(tenant=tenant, defaults={'status': 'trialing'})
+        sub.plan_tier = plan
+        sub.save(update_fields=['plan_tier'])
         return Response(TenantPlanSerializer(obj, context={'request': request}).data)
 
 
