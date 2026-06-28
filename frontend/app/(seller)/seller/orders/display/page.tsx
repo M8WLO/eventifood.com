@@ -11,8 +11,9 @@ interface Order {
 }
 
 function displayNumber(o: Order, mode: string): string {
-  if (mode === 'daily' && o.daily_number != null) return `${o.daily_number}`
-  return o.order_number.replace('#', '')
+  if (mode === 'daily' && o.daily_number != null)
+    return `#${String(o.daily_number).padStart(4, '0')}`
+  return o.order_number.startsWith('#') ? o.order_number : `#${o.order_number}`
 }
 
 export default function CustomerDisplayPage() {
@@ -62,7 +63,7 @@ export default function CustomerDisplayPage() {
               <div
                 key={o.id}
                 className={`${bg} rounded-2xl flex items-center justify-center font-extrabold tabular-nums shadow-lg`}
-                style={{ width: 120, height: 120, fontSize: 48 }}
+                style={{ width: 150, height: 120, fontSize: 34 }}
               >
                 <span className={numberClass}>{displayNumber(o, orderMode)}</span>
               </div>

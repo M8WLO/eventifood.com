@@ -66,8 +66,9 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; next: string
 }
 
 function displayNumber(o: Order, mode: string): string {
-  if (mode === 'daily' && o.daily_number != null) return `#${o.daily_number}`
-  return o.order_number
+  if (mode === 'daily' && o.daily_number != null)
+    return `#${String(o.daily_number).padStart(4, '0')}`
+  return o.order_number.startsWith('#') ? o.order_number : `#${o.order_number}`
 }
 
 function BoardContent() {

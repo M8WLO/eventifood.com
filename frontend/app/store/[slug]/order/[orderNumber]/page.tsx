@@ -156,9 +156,10 @@ export default function OrderStatusPage() {
       ? [order, ...readyOthers]
       : readyOthers
 
-  // Display number: prefer daily_number (matches kitchen display), fall back to order_number
   const displayNum = (o: OrderStatus) =>
-    o.daily_number != null ? String(o.daily_number) : o.order_number
+    o.daily_number != null
+      ? `#${String(o.daily_number).padStart(4, '0')}`
+      : o.order_number.startsWith('#') ? o.order_number : `#${o.order_number}`
 
   const hasOtherOrders = otherOrders.length > 0
 
