@@ -15,6 +15,7 @@ const NAV = [
   { href: '/seller/inventory', label: 'Inventory', icon: '📦' },
   { href: '/seller/wastage', label: 'Wastage', icon: '🗑️' },
   { href: '/seller/analytics', label: 'Analytics', icon: '📊' },
+  { href: '/seller/events', label: 'Events', icon: '🎪' },
   { href: '/seller/settings', label: 'Settings', icon: '⚙️' },
 ]
 

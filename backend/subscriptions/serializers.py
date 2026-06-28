@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Subscription, Plan
+from django.utils import timezone
+from .models import Subscription, Plan, TenantPlan
 
 
 class PlanSerializer(serializers.ModelSerializer):
@@ -7,10 +8,39 @@ class PlanSerializer(serializers.ModelSerializer):
         model = Plan
         fields = [
             'id', 'name', 'slug', 'monthly_price', 'annual_price',
-            'description', 'features', 'max_products', 'max_categories',
-            'max_staff', 'is_active', 'is_highlighted', 'display_order', 'created_at',
+            'platform_fee_percent', 'description', 'features', 'feature_flags',
+            'max_products', 'max_categories', 'max_staff',
+            'is_active', 'is_highlighted', 'display_order', 'created_at',
         ]
         read_only_fields = ['id', 'created_at']
+
+
+class TenantPlanSerializer(serializers.ModelSerializer):
+    plan = PlanSerializer(read_only=True)
+    plan_id = serializers.PrimaryKeyRelatedField(
+        queryset=Plan.objects.filter(is_active=True),
+        source='plan',
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+    can_change = serializers.SerializerMethodField()
+    days_until_change = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TenantPlan
+        fields = ['id', 'plan', 'plan_id', 'activated_at', 'next_change_allowed_at', 'can_change', 'days_until_change']
+        read_only_fields = ['id', 'activated_at', 'next_change_allowed_at', 'can_change', 'days_until_change']
+
+    def get_can_change(self, obj):
+        request = self.context.get('request')
+        return obj.can_change(request.user if request else None)
+
+    def get_days_until_change(self, obj):
+        if not obj.next_change_allowed_at:
+            return 0
+        delta = obj.next_change_allowed_at - timezone.now()
+        return max(0, delta.days)
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):

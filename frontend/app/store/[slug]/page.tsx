@@ -38,6 +38,12 @@ interface Category {
   products: Product[]
 }
 
+interface ActiveEvent {
+  id: number
+  name: string
+  item_overrides: { type: 'product' | 'variation'; id: number; price_override: number | null }[]
+}
+
 interface BasketItem {
   variationId: number
   productName: string
@@ -79,6 +85,7 @@ function StorefrontContent() {
   const [addedToast, setAddedToast] = useState<string | null>(null)
   const [waitTimeEnabled, setWaitTimeEnabled] = useState(false)
   const [estimatedWait, setEstimatedWait] = useState<number | null>(null)
+  const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null)
   const qrAutoAdded = useRef(false)
 
   useEffect(() => {
@@ -93,6 +100,7 @@ function StorefrontContent() {
       setBanner(tenantRes.data.banner || null)
       setWaitTimeEnabled(!!tenantRes.data.wait_time_enabled)
       setEstimatedWait(tenantRes.data.estimated_wait_minutes ?? null)
+      setActiveEvent(tenantRes.data.active_event || null)
       const t = tenantRes.data.theme || 'default'
       setTheme(t)
       sessionStorage.setItem(`ef_theme_${slug}`, t)
@@ -204,6 +212,44 @@ function StorefrontContent() {
     }
   }, [categories, searchParams])
 
+  // Apply event menu filtering + price overrides when an event is active
+  const displayCategories: Category[] = activeEvent
+    ? (() => {
+        const productOv = new Map(
+          activeEvent.item_overrides.filter(o => o.type === 'product').map(o => [o.id, o.price_override])
+        )
+        const variationOv = new Map(
+          activeEvent.item_overrides.filter(o => o.type === 'variation').map(o => [o.id, o.price_override])
+        )
+        const result: Category[] = []
+        for (const cat of categories) {
+          const products: Product[] = []
+          for (const product of cat.products) {
+            if (!product.is_visible || product.out_of_stock) continue
+            if (productOv.has(product.id)) {
+              const override = productOv.get(product.id)
+              const newVariations = override != null
+                ? product.variations.map(v => ({ ...v, retail_price: String(override) }))
+                : product.variations
+              products.push({ ...product, variations: newVariations })
+            } else {
+              const filteredVars = product.variations
+                .filter(v => variationOv.has(v.id) && v.is_available)
+                .map(v => {
+                  const ov = variationOv.get(v.id)
+                  return ov != null ? { ...v, retail_price: String(ov) } : v
+                })
+              if (filteredVars.length > 0) {
+                products.push({ ...product, variations: filteredVars })
+              }
+            }
+          }
+          if (products.length > 0) result.push({ ...cat, products })
+        }
+        return result
+      })()
+    : categories
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -255,15 +301,31 @@ function StorefrontContent() {
         </div>
       )}
 
+      {/* Active event banner */}
+      {activeEvent && (
+        <div className="max-w-lg mx-auto px-4 pt-4">
+          <div
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-white text-sm font-medium"
+            style={{ backgroundColor: colors.dark }}
+          >
+            <span className="text-lg">🎪</span>
+            <div>
+              <span className="font-semibold">Event menu: </span>
+              {activeEvent.name}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Menu */}
       <main className="max-w-lg mx-auto px-4 py-6 space-y-4">
-        {categories.length === 0 && (
+        {displayCategories.length === 0 && (
           <div className="text-center py-16 text-gray-400">
             <p className="text-4xl mb-3">🍽️</p>
             <p>Menu coming soon!</p>
           </div>
         )}
-        {categories.map((cat) => (
+        {displayCategories.map((cat) => (
           <div key={cat.id} className="card p-0 overflow-hidden">
             <button
               onClick={() => setExpanded((prev) => {

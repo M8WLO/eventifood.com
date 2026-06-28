@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import PricingSection from './(platform)/pricing-section'
 
 const features = [
   {
@@ -39,64 +40,6 @@ const buyerSteps = [
   { step: '2', title: 'Browse & add to basket', desc: 'Pick your items, customise options, and review your order before paying.' },
   { step: '3', title: 'Pay securely', desc: 'Card or mobile payment processed in seconds. No cash, no waiting.' },
   { step: '4', title: 'Track your order live', desc: 'Watch your order move from Received → Preparing → Ready — right on your phone.' },
-]
-
-const plans: Array<{
-  name: string; price: string; period: string; description: string;
-  features: string[]; cta: string; href: string; highlight: boolean; comingSoon?: boolean;
-}> = [
-  {
-    name: 'Starter',
-    price: '£0',
-    period: 'Free forever',
-    description: 'Perfect for getting started',
-    features: [
-      'Up to 5 menu items',
-      'QR code ordering',
-      'Live kitchen board',
-      'Basic sales reports',
-      'Email support',
-    ],
-    cta: 'Get started free',
-    href: '/register',
-    highlight: false,
-  },
-  {
-    name: 'Pro',
-    price: '£29',
-    period: 'per month',
-    description: 'For busy vans & serious sellers',
-    features: [
-      'Unlimited menu items',
-      'Product variations (size, extras, options)',
-      'Advanced analytics & profit tracking',
-      'Inventory management with low-stock alerts',
-      'Custom branded storefront',
-      'Staff accounts',
-      'Priority support',
-    ],
-    cta: 'Start 14-day free trial',
-    href: '/register',
-    highlight: true,
-  },
-  {
-    name: 'Event',
-    price: '£79',
-    period: 'per month',
-    description: 'For multi-van operators & festivals',
-    features: [
-      'Everything in Pro',
-      'Multiple locations / vans',
-      'Event-mode bulk QR printing',
-      'Festival & market integrations',
-      'Dedicated account manager',
-      'SLA support',
-    ],
-    cta: 'Coming soon',
-    href: '#pricing',
-    highlight: false,
-    comingSoon: true,
-  },
 ]
 
 const testimonials = [
@@ -406,57 +349,7 @@ export default function LandingPage() {
             <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">Simple, honest pricing</h2>
             <p className="text-lg text-gray-500">Start free. Scale when you need to. No hidden fees.</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-6 items-start">
-            {plans.map((plan) => (
-              <div
-                key={plan.name}
-                className={`rounded-2xl border p-7 flex flex-col ${
-                  plan.highlight
-                    ? 'border-brand-500 bg-brand-600 text-white shadow-2xl shadow-brand-200 md:-mt-4'
-                    : plan.comingSoon
-                    ? 'border-gray-200 bg-gray-50 opacity-75'
-                    : 'border-gray-200 bg-white'
-                }`}
-              >
-                {plan.highlight && (
-                  <span className="self-start bg-gold-400 text-white text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wide">Most popular</span>
-                )}
-                {plan.comingSoon && (
-                  <span className="self-start bg-gray-200 text-gray-600 text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wide">Coming soon</span>
-                )}
-                <p className={`text-sm font-semibold uppercase tracking-wide mb-1 ${plan.highlight ? 'text-brand-200' : 'text-brand-500'}`}>{plan.name}</p>
-                <div className="flex items-end gap-1 mb-1">
-                  <span className={`text-4xl font-extrabold ${plan.highlight ? 'text-white' : 'text-gray-900'}`}>{plan.price}</span>
-                  <span className={`text-sm mb-1.5 ${plan.highlight ? 'text-brand-200' : 'text-gray-400'}`}>{plan.period}</span>
-                </div>
-                <p className={`text-sm mb-6 ${plan.highlight ? 'text-brand-200' : 'text-gray-500'}`}>{plan.description}</p>
-                <ul className="space-y-2.5 mb-8 flex-1">
-                  {plan.features.map((f) => (
-                    <li key={f} className={`flex items-start gap-2 text-sm ${plan.highlight ? 'text-brand-100' : 'text-gray-600'}`}>
-                      <span className={`mt-0.5 flex-shrink-0 font-bold ${plan.highlight ? 'text-gold-300' : 'text-brand-500'}`}>✓</span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                {plan.comingSoon ? (
-                  <span className="block text-center font-bold py-3 rounded-xl bg-gray-200 text-gray-500 cursor-not-allowed">
-                    Coming soon
-                  </span>
-                ) : (
-                  <Link
-                    href={plan.href}
-                    className={`block text-center font-bold py-3 rounded-xl transition-all ${
-                      plan.highlight
-                        ? 'bg-gold-400 hover:bg-gold-500 text-white shadow-lg'
-                        : 'bg-brand-600 hover:bg-brand-700 text-white'
-                    }`}
-                  >
-                    {plan.cta}
-                  </Link>
-                )}
-              </div>
-            ))}
-          </div>
+          <PricingSection />
         </div>
       </section>
 

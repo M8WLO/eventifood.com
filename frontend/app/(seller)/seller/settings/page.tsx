@@ -39,12 +39,20 @@ interface Tenant {
   wait_time_enabled: boolean
 }
 
-interface Subscription {
-  plan: string
-  plan_tier: { id: number; name: string; description: string; features: string[]; monthly_price: string; annual_price: string } | null
-  status: string
-  next_billing_date: string | null
-  annual_cost: string
+interface TenantPlanData {
+  plan: {
+    id: number
+    name: string
+    description: string
+    features: string[]
+    feature_flags: string[]
+    monthly_price: string
+    platform_fee_percent: string
+    is_highlighted: boolean
+  } | null
+  can_change: boolean
+  days_until_change: number
+  next_change_allowed_at: string | null
 }
 
 interface Plan {
@@ -52,14 +60,15 @@ interface Plan {
   name: string
   description: string
   features: string[]
+  feature_flags: string[]
   monthly_price: string
-  annual_price: string
+  platform_fee_percent: string
   is_highlighted: boolean
 }
 
 export default function SettingsPage() {
   const [tenant, setTenant] = useState<Tenant | null>(null)
-  const [subscription, setSubscription] = useState<Subscription | null>(null)
+  const [tenantPlan, setTenantPlan] = useState<TenantPlanData | null>(null)
   const [plans, setPlans] = useState<Plan[]>([])
   const [form, setForm] = useState({ name: '', theme: 'default' })
   const [saving, setSaving] = useState(false)
@@ -91,9 +100,9 @@ export default function SettingsPage() {
       setOrderMode(r.data.order_number_mode || 'daily')
       setWaitTimeEnabled(!!r.data.wait_time_enabled)
     })
-    api.get('/api/subscriptions/status/').then((r) => {
-      setSubscription(r.data)
-      setSelectedPlanId(r.data.plan_tier?.id ?? null)
+    api.get('/api/subscriptions/my-plan/').then((r) => {
+      setTenantPlan(r.data)
+      setSelectedPlanId(r.data.plan?.id ?? null)
     }).catch(() => {})
     api.get('/api/subscriptions/plans/').then((r) => setPlans(r.data)).catch(() => {})
   }, [])
@@ -148,8 +157,8 @@ export default function SettingsPage() {
     if (!selectedPlanId) return
     setPlanSaving(true)
     try {
-      const { data } = await api.patch('/api/subscriptions/status/', { plan_tier_id: selectedPlanId })
-      setSubscription(data)
+      const { data } = await api.post('/api/subscriptions/my-plan/', { plan_id: selectedPlanId })
+      setTenantPlan(data)
       setPlanSaved(true)
       setTimeout(() => setPlanSaved(false), 3000)
     } finally {
@@ -496,115 +505,91 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Subscription */}
+      {/* Plan */}
       <div className="card space-y-4">
-        <h2 className="font-semibold text-gray-700">Subscription</h2>
-        {subscription ? (
-          <>
-            <div className="space-y-2 text-sm pb-4 border-b border-gray-100">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500">Current plan</span>
-                {subscription.plan_tier ? (
-                  <span className="font-semibold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full text-xs">
-                    {subscription.plan_tier.name}
-                  </span>
-                ) : (
-                  <span className="font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full text-xs">
-                    Pay As You Go
-                  </span>
-                )}
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Status</span>
-                <span className={`font-medium capitalize ${subscription.status === 'active' ? 'text-green-600' : subscription.status === 'trialing' ? 'text-blue-600' : 'text-red-500'}`}>
-                  {subscription.status}
-                </span>
-              </div>
-              {subscription.plan_tier ? (
-                <>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Annual cost</span>
-                    <span className="font-medium">£{Number(subscription.annual_cost).toFixed(2)}</span>
-                  </div>
-                  {subscription.next_billing_date && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Next billing</span>
-                      <span className="font-medium">{subscription.next_billing_date}</span>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Platform fee</span>
-                  <span className="font-medium text-gray-700">2% per order · no monthly charge</span>
-                </div>
-              )}
-            </div>
+        <h2 className="font-semibold text-gray-700">Plan</h2>
 
-            <div className="border-t border-gray-100 pt-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Switch plan</h3>
-              {plans.length > 0 ? (
-                <>
-                  <div className="space-y-2">
-                    {plans.map((plan) => (
-                      <label
-                        key={plan.id}
-                        className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedPlanId === plan.id ? 'border-brand-500 bg-brand-50' : 'border-gray-100 hover:border-gray-200'}`}
-                      >
-                        <input
-                          type="radio"
-                          name="plan"
-                          checked={selectedPlanId === plan.id}
-                          onChange={() => setSelectedPlanId(plan.id)}
-                          className="mt-1"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-gray-900">{plan.name}</span>
-                            {plan.is_highlighted && (
-                              <span className="text-xs bg-brand-100 text-brand-700 px-1.5 py-0.5 rounded font-medium">Popular</span>
-                            )}
-                          </div>
-                          {plan.description && <p className="text-xs text-gray-500 mt-0.5">{plan.description}</p>}
-                          <p className="text-xs text-gray-500 mt-0.5">
-                            £{Number(plan.monthly_price).toFixed(2)}/mo · £{Number(plan.annual_price).toFixed(2)}/yr
-                          </p>
-                          {plan.features?.length > 0 && (
-                            <ul className="mt-1 space-y-0.5">
-                              {plan.features.map((f, i) => (
-                                <li key={i} className="text-xs text-gray-500 flex items-center gap-1">
-                                  <span className="text-green-500">✓</span> {f}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                  <button
-                    onClick={savePlan}
-                    disabled={planSaving || selectedPlanId === subscription.plan_tier?.id}
-                    className="btn-primary mt-3 text-sm disabled:opacity-30"
-                  >
-                    {planSaving ? 'Saving…' : planSaved ? 'Saved ✓' : 'Switch plan'}
-                  </button>
-                </>
-              ) : (
-                <div className="bg-brand-50 rounded-xl px-4 py-3 text-sm text-brand-700">
-                  <p className="font-semibold">Pay As You Go</p>
-                  <p className="text-xs text-brand-600 mt-0.5">
-                    2% platform fee per order · no monthly charge · Stripe processing fees apply separately
-                  </p>
-                  <p className="text-xs text-gray-500 mt-2">
-                    To discuss alternative plan options, contact support.
-                  </p>
-                </div>
+        {/* Current plan summary */}
+        <div className="bg-brand-50 rounded-xl px-4 py-3 text-sm">
+          {tenantPlan?.plan ? (
+            <>
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-bold text-brand-800">{tenantPlan.plan.name}</span>
+                <span className="text-xs bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full font-semibold">Active</span>
+              </div>
+              <p className="text-xs text-brand-600">{tenantPlan.plan.description}</p>
+              <p className="text-xs text-brand-600 mt-0.5">{Number(tenantPlan.plan.platform_fee_percent).toFixed(1)}% per transaction · no monthly charge</p>
+              {tenantPlan.plan.features?.length > 0 && (
+                <ul className="mt-2 space-y-0.5">
+                  {tenantPlan.plan.features.map((f, i) => (
+                    <li key={i} className="text-xs text-brand-700 flex items-center gap-1"><span className="text-green-500">✓</span>{f}</li>
+                  ))}
+                </ul>
               )}
+            </>
+          ) : (
+            <>
+              <p className="font-semibold text-brand-800">No plan selected</p>
+              <p className="text-xs text-brand-600 mt-0.5">Choose a plan below to unlock features.</p>
+            </>
+          )}
+        </div>
+
+        {/* 30-day lock warning */}
+        {tenantPlan && !tenantPlan.can_change && tenantPlan.days_until_change > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+            Plan can be changed in <span className="font-semibold">{tenantPlan.days_until_change} day{tenantPlan.days_until_change !== 1 ? 's' : ''}</span>. Plans are locked for 30 days after a change.
+          </div>
+        )}
+
+        {/* Plan picker */}
+        {plans.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Switch plan</h3>
+            <div className="space-y-2">
+              {plans.map((plan) => (
+                <label
+                  key={plan.id}
+                  className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedPlanId === plan.id ? 'border-brand-500 bg-brand-50' : 'border-gray-100 hover:border-gray-200'}`}
+                >
+                  <input
+                    type="radio"
+                    name="plan"
+                    checked={selectedPlanId === plan.id}
+                    onChange={() => setSelectedPlanId(plan.id)}
+                    className="mt-1"
+                    disabled={!tenantPlan?.can_change}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-gray-900">{plan.name}</span>
+                      {plan.is_highlighted && (
+                        <span className="text-xs bg-brand-100 text-brand-700 px-1.5 py-0.5 rounded font-medium">Popular</span>
+                      )}
+                    </div>
+                    {plan.description && <p className="text-xs text-gray-500 mt-0.5">{plan.description}</p>}
+                    <p className="text-xs text-gray-500 mt-0.5">{Number(plan.platform_fee_percent).toFixed(1)}% per transaction</p>
+                    {plan.features?.length > 0 && (
+                      <ul className="mt-1 space-y-0.5">
+                        {plan.features.map((f, i) => (
+                          <li key={i} className="text-xs text-gray-500 flex items-center gap-1">
+                            <span className="text-green-500">✓</span> {f}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </label>
+              ))}
             </div>
-          </>
-        ) : (
-          <p className="text-sm text-gray-400">No subscription found.</p>
+            <button
+              onClick={savePlan}
+              disabled={planSaving || selectedPlanId === tenantPlan?.plan?.id || !tenantPlan?.can_change}
+              className="btn-primary mt-3 text-sm disabled:opacity-30"
+            >
+              {planSaving ? 'Saving…' : planSaved ? 'Saved ✓' : 'Switch plan'}
+            </button>
+          </div>
         )}
       </div>
     </div>

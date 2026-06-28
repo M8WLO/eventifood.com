@@ -7,8 +7,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny, BasePermission
 
-from .models import Subscription, Plan
-from .serializers import SubscriptionSerializer, PlanSerializer, AdminSubscriptionSerializer
+from .models import Subscription, Plan, TenantPlan
+from .serializers import SubscriptionSerializer, PlanSerializer, AdminSubscriptionSerializer, TenantPlanSerializer
 
 
 class IsSuperAdmin(BasePermission):
@@ -142,6 +142,68 @@ class StripeWebhookView(APIView):
                 sub.save()
 
         return Response({'received': True})
+
+
+class TenantPlanView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get_or_create(self, tenant):
+        obj, _ = TenantPlan.objects.get_or_create(tenant=tenant)
+        return obj
+
+    def get(self, request):
+        tenant = request.tenant
+        if not tenant:
+            return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
+        obj = self._get_or_create(tenant)
+        return Response(TenantPlanSerializer(obj, context={'request': request}).data)
+
+    def post(self, request):
+        tenant = request.tenant
+        if not tenant:
+            return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
+        plan_id = request.data.get('plan_id')
+        try:
+            plan = Plan.objects.get(pk=plan_id, is_active=True)
+        except Plan.DoesNotExist:
+            return Response({'detail': 'Plan not found.'}, status=status.HTTP_404_NOT_FOUND)
+        obj = self._get_or_create(tenant)
+        if not obj.can_change(request.user):
+            return Response(
+                {'detail': 'Plan can only be changed once every 30 days.',
+                 'next_change_allowed_at': obj.next_change_allowed_at},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        obj.set_plan(plan, user=request.user)
+        return Response(TenantPlanSerializer(obj, context={'request': request}).data)
+
+
+class AdminTenantPlanView(APIView):
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request, slug):
+        from tenants.models import Tenant
+        try:
+            tenant = Tenant.objects.get(slug=slug)
+        except Tenant.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        obj, _ = TenantPlan.objects.get_or_create(tenant=tenant)
+        return Response(TenantPlanSerializer(obj, context={'request': request}).data)
+
+    def post(self, request, slug):
+        from tenants.models import Tenant
+        try:
+            tenant = Tenant.objects.get(slug=slug)
+        except Tenant.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        plan_id = request.data.get('plan_id')
+        try:
+            plan = Plan.objects.get(pk=plan_id)
+        except Plan.DoesNotExist:
+            return Response({'detail': 'Plan not found.'}, status=status.HTTP_404_NOT_FOUND)
+        obj, _ = TenantPlan.objects.get_or_create(tenant=tenant)
+        obj.set_plan(plan, user=request.user)
+        return Response(TenantPlanSerializer(obj, context={'request': request}).data)
 
 
 class AdminSubscriptionView(APIView):

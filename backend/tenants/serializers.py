@@ -15,10 +15,22 @@ class TenantSerializer(serializers.ModelSerializer):
 class TenantPublicSerializer(serializers.ModelSerializer):
     """Minimal serializer for buyer-facing API."""
     estimated_wait_minutes = serializers.SerializerMethodField()
+    active_event = serializers.SerializerMethodField()
 
     class Meta:
         model = Tenant
-        fields = ['name', 'banner', 'theme', 'wait_time_enabled', 'estimated_wait_minutes']
+        fields = ['name', 'banner', 'theme', 'wait_time_enabled', 'estimated_wait_minutes', 'active_event']
+
+    def get_active_event(self, obj):
+        from events.models import Event
+        event = Event.objects.filter(tenant=obj, is_active=True).first()
+        if not event:
+            return None
+        return {
+            'id': event.id,
+            'name': event.name,
+            'item_overrides': event.item_overrides,
+        }
 
     def get_estimated_wait_minutes(self, obj):
         if not obj.wait_time_enabled:

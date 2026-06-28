@@ -9,8 +9,10 @@ interface Plan {
   slug: string
   monthly_price: string
   annual_price: string
+  platform_fee_percent: string
   description: string
   features: string[]
+  feature_flags: string[]
   max_products: number | null
   max_categories: number | null
   max_staff: number | null
@@ -19,9 +21,19 @@ interface Plan {
   display_order: number
 }
 
+const FEATURE_FLAG_OPTIONS = [
+  { key: 'inventory', label: 'Inventory management' },
+  { key: 'wastage', label: 'Wastage tracking' },
+  { key: 'print_menus', label: 'Print menu PDFs' },
+  { key: 'events', label: 'Event pricing presets' },
+  { key: 'analytics', label: 'Sales analytics' },
+  { key: 'wait_time', label: 'Live wait time display' },
+]
+
 const EMPTY: Plan = {
-  name: '', slug: '', monthly_price: '0', annual_price: '0', description: '',
-  features: [], max_products: null, max_categories: null, max_staff: null,
+  name: '', slug: '', monthly_price: '0', annual_price: '0', platform_fee_percent: '2.00',
+  description: '', features: [], feature_flags: [],
+  max_products: null, max_categories: null, max_staff: null,
   is_active: true, is_highlighted: false, display_order: 0,
 }
 
@@ -48,7 +60,7 @@ export default function PlansPage() {
   }
 
   const openEdit = (p: Plan) => {
-    setModal({ ...p })
+    setModal({ ...p, feature_flags: p.feature_flags || [] })
     setFeaturesText(p.features.join('\n'))
     setError(null)
   }
@@ -60,6 +72,7 @@ export default function PlansPage() {
     const payload = {
       ...modal,
       features: featuresText.split('\n').map((s) => s.trim()).filter(Boolean),
+      feature_flags: modal.feature_flags || [],
       max_products: modal.max_products === null ? null : Number(modal.max_products),
       max_categories: modal.max_categories === null ? null : Number(modal.max_categories),
       max_staff: modal.max_staff === null ? null : Number(modal.max_staff),
@@ -128,9 +141,8 @@ export default function PlansPage() {
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Name</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Slug</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Monthly</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Annual</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Limits</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Fee %</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Feature flags</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Active</th>
                 <th className="px-4 py-3"></th>
               </tr>
@@ -143,11 +155,9 @@ export default function PlansPage() {
                     {p.is_highlighted && <span className="ml-2 text-xs bg-gold-100 text-gold-700 px-1.5 py-0.5 rounded">★ Popular</span>}
                   </td>
                   <td className="px-4 py-3 text-gray-500 font-mono text-xs">{p.slug}</td>
-                  <td className="px-4 py-3 text-gray-700">£{p.monthly_price}</td>
-                  <td className="px-4 py-3 text-gray-700">£{p.annual_price}</td>
+                  <td className="px-4 py-3 text-gray-700">{Number(p.platform_fee_percent).toFixed(1)}%</td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
-                    {p.max_products !== null ? `${p.max_products} products` : '∞ products'}{' · '}
-                    {p.max_staff !== null ? `${p.max_staff} staff` : '∞ staff'}
+                    {(p.feature_flags || []).join(', ') || <span className="italic">none</span>}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -161,7 +171,7 @@ export default function PlansPage() {
                 </tr>
               ))}
               {plans.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">No plans yet. Create one above.</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">No plans yet. Create one above.</td></tr>
               )}
             </tbody>
           </table>
@@ -181,25 +191,41 @@ export default function PlansPage() {
               {field('slug', 'Slug (unique, e.g. starter)')}
               {field('description', 'Description')}
               <div className="grid grid-cols-2 gap-4">
-                {field('monthly_price', 'Monthly price (£)', 'number')}
-                {field('annual_price', 'Annual price (£)', 'number')}
+                {field('platform_fee_percent', 'Platform fee %', 'number')}
+                {field('display_order', 'Display order', 'number')}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Features <span className="text-gray-400 font-normal">(one per line)</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Features <span className="text-gray-400 font-normal">(display text, one per line)</span>
+                </label>
                 <textarea
                   value={featuresText}
                   onChange={(e) => setFeaturesText(e.target.value)}
                   className="input-field"
                   rows={5}
-                  placeholder="Unlimited menu items&#10;Product variations&#10;Advanced analytics"
+                  placeholder="QR code ordering&#10;Live kitchen board&#10;Inventory management"
                 />
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                {limitField('max_products', 'Max products')}
-                {limitField('max_categories', 'Max categories')}
-                {limitField('max_staff', 'Max staff')}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Feature flags <span className="text-gray-400 font-normal">(gates which app features are unlocked)</span></label>
+                <div className="grid grid-cols-2 gap-2">
+                  {FEATURE_FLAG_OPTIONS.map(({ key, label }) => (
+                    <label key={key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={(modal?.feature_flags || []).includes(key)}
+                        onChange={(e) => setModal((p) => {
+                          if (!p) return p
+                          const flags = p.feature_flags || []
+                          return { ...p, feature_flags: e.target.checked ? [...flags, key] : flags.filter(f => f !== key) }
+                        })}
+                        className="w-4 h-4 accent-brand-600"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
               </div>
-              {field('display_order', 'Display order', 'number')}
               <div className="flex items-center gap-6">
                 <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                   <input type="checkbox" checked={modal.is_active} onChange={(e) => setModal((p) => p ? { ...p, is_active: e.target.checked } : p)} className="w-4 h-4 accent-brand-600" />
