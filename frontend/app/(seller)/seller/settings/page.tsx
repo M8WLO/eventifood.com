@@ -160,7 +160,7 @@ export default function SettingsPage() {
     if (!logoFile || !logoImgRef.current) return
     const img = logoImgRef.current
     const CROP_W = 900
-    const CROP_H = 200  // 4.5:1 — matches mobile header proportions
+    const CROP_H = 400
     const canvas = document.createElement('canvas')
     canvas.width = CROP_W
     canvas.height = CROP_H
@@ -259,14 +259,14 @@ export default function SettingsPage() {
         <h2 className="font-semibold text-gray-700">Store logo / header image</h2>
         <p className="text-sm text-gray-500">This image appears at the top of your ordering page on customers&apos; phones. Choose an image, then drag the slider to position the crop.</p>
         <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs text-blue-700">
-          <span className="font-semibold">Recommended size:</span> 900 × 200 px minimum, landscape orientation. A wider image gives you more flexibility to reposition the crop. JPEG or PNG.
+          <span className="font-semibold">Recommended size:</span> 900 × 400 px minimum, landscape orientation. A wider or taller image gives you more flexibility to reposition the crop. JPEG or PNG.
         </div>
 
         {/* Preview — shows current or newly picked image */}
         {(logoPreviewUrl || tenant.banner) && (
           <div className="space-y-2">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Preview (as it appears in your store header)</p>
-            <div className="w-full rounded-xl overflow-hidden" style={{ height: 80 }}>
+            <div className="w-full rounded-xl overflow-hidden" style={{ aspectRatio: '9/4' }}>
               <img
                 src={logoPreviewUrl || tenant.banner!}
                 alt="Logo preview"
