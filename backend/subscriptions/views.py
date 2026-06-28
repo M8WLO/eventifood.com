@@ -452,4 +452,12 @@ class AdminSubscriptionView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
+        # Keep TenantPlan in sync with Subscription.plan_tier so the seller portal reflects the change
+        tp, _ = TenantPlan.objects.get_or_create(tenant=sub.tenant)
+        if sub.plan_tier:
+            tp.set_plan(sub.plan_tier, user=request.user)
+        else:
+            tp.plan = None
+            tp.next_change_allowed_at = None
+            tp.save(update_fields=['plan', 'next_change_allowed_at'])
         return Response(serializer.data)
