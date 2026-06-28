@@ -36,6 +36,7 @@ interface Tenant {
   banner: string | null
   kitchen_nav_items: string[]
   order_number_mode: string
+  wait_time_enabled: boolean
 }
 
 interface Subscription {
@@ -69,6 +70,9 @@ export default function SettingsPage() {
   const [orderMode, setOrderMode] = useState<'daily' | 'total'>('daily')
   const [orderModeSaving, setOrderModeSaving] = useState(false)
   const [orderModeSaved, setOrderModeSaved] = useState(false)
+  const [waitTimeEnabled, setWaitTimeEnabled] = useState(false)
+  const [waitTimeSaving, setWaitTimeSaving] = useState(false)
+  const [waitTimeSaved, setWaitTimeSaved] = useState(false)
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null)
   const [planSaving, setPlanSaving] = useState(false)
   const [planSaved, setPlanSaved] = useState(false)
@@ -85,6 +89,7 @@ export default function SettingsPage() {
       setForm({ name: r.data.name, theme: r.data.theme })
       setKitchenNav(r.data.kitchen_nav_items || [])
       setOrderMode(r.data.order_number_mode || 'daily')
+      setWaitTimeEnabled(!!r.data.wait_time_enabled)
     })
     api.get('/api/subscriptions/status/').then((r) => {
       setSubscription(r.data)
@@ -125,6 +130,17 @@ export default function SettingsPage() {
       setTimeout(() => setOrderModeSaved(false), 3000)
     } finally {
       setOrderModeSaving(false)
+    }
+  }
+
+  const saveWaitTime = async () => {
+    setWaitTimeSaving(true)
+    try {
+      await api.patch('/api/tenants/me/', { wait_time_enabled: waitTimeEnabled })
+      setWaitTimeSaved(true)
+      setTimeout(() => setWaitTimeSaved(false), 3000)
+    } finally {
+      setWaitTimeSaving(false)
     }
   }
 
@@ -353,6 +369,39 @@ export default function SettingsPage() {
         </div>
         <button onClick={saveOrderMode} disabled={orderModeSaving} className="btn-primary text-sm">
           {orderModeSaving ? 'Saving…' : orderModeSaved ? 'Saved ✓' : 'Save counter setting'}
+        </button>
+      </div>
+
+      {/* Live wait time */}
+      <div className="card space-y-4">
+        <h2 className="font-semibold text-gray-700">Live wait time</h2>
+        <p className="text-sm text-gray-500">
+          When enabled, customers see a real-time estimated wait banner on your ordering page.
+          The estimate is the average time from order placed to order ready across your last 5 completed orders.
+        </p>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <div className="relative">
+            <input
+              type="checkbox"
+              className="sr-only"
+              checked={waitTimeEnabled}
+              onChange={(e) => setWaitTimeEnabled(e.target.checked)}
+            />
+            <div className={`w-11 h-6 rounded-full transition-colors ${waitTimeEnabled ? 'bg-brand-600' : 'bg-gray-200'}`} />
+            <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${waitTimeEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+          </div>
+          <span className="text-sm font-medium text-gray-800">
+            {waitTimeEnabled ? 'Enabled — customers see your estimated wait' : 'Disabled'}
+          </span>
+        </label>
+        {waitTimeEnabled && (
+          <p className="text-xs text-gray-400">
+            The wait estimate only appears once you have at least one completed order with a ready time recorded.
+            Until then, customers see "Calculating…".
+          </p>
+        )}
+        <button onClick={saveWaitTime} disabled={waitTimeSaving} className="btn-primary text-sm">
+          {waitTimeSaving ? 'Saving…' : waitTimeSaved ? 'Saved ✓' : 'Save wait time setting'}
         </button>
       </div>
 

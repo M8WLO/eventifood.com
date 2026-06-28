@@ -27,6 +27,7 @@ interface Product {
   photo: string | null
   is_visible: boolean
   out_of_stock: boolean
+  prep_time_minutes: number | null
   variations: Variation[]
   extras: Extra[]
 }
@@ -76,6 +77,8 @@ function StorefrontContent() {
   const [extrasModal, setExtrasModal] = useState<{ product: Product; variation: Variation } | null>(null)
   const [selectedExtras, setSelectedExtras] = useState<Set<number>>(new Set())
   const [addedToast, setAddedToast] = useState<string | null>(null)
+  const [waitTimeEnabled, setWaitTimeEnabled] = useState(false)
+  const [estimatedWait, setEstimatedWait] = useState<number | null>(null)
   const qrAutoAdded = useRef(false)
 
   useEffect(() => {
@@ -88,6 +91,8 @@ function StorefrontContent() {
       setCategories(menuRes.data)
       setStoreName(tenantRes.data.name)
       setBanner(tenantRes.data.banner || null)
+      setWaitTimeEnabled(!!tenantRes.data.wait_time_enabled)
+      setEstimatedWait(tenantRes.data.estimated_wait_minutes ?? null)
       const t = tenantRes.data.theme || 'default'
       setTheme(t)
       sessionStorage.setItem(`ef_theme_${slug}`, t)
@@ -232,6 +237,24 @@ function StorefrontContent() {
         </header>
       )}
 
+      {/* Live wait time banner */}
+      {waitTimeEnabled && (
+        <div className="max-w-lg mx-auto px-4 pt-4">
+          <div
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-white text-sm font-medium"
+            style={{ backgroundColor: colors.primary }}
+          >
+            <span className="text-lg">⏱️</span>
+            <div>
+              <span className="font-semibold">Current estimated wait: </span>
+              {estimatedWait
+                ? `~${estimatedWait} min${estimatedWait !== 1 ? 's' : ''}`
+                : 'Calculating…'}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Menu */}
       <main className="max-w-lg mx-auto px-4 py-6 space-y-4">
         {categories.length === 0 && (
@@ -274,6 +297,9 @@ function StorefrontContent() {
                               <h3 className="font-semibold text-gray-900">{product.name}</h3>
                               {product.description && (
                                 <p className="text-sm text-gray-500 mt-0.5">{product.description}</p>
+                              )}
+                              {product.prep_time_minutes && (
+                                <p className="text-xs text-gray-400 mt-0.5">⏱ ~{product.prep_time_minutes} min prep</p>
                               )}
                             </div>
                             {isSinglePrice && (

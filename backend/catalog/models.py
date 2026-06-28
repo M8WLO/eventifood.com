@@ -46,6 +46,7 @@ class Product(models.Model):
     out_of_stock = models.BooleanField(default=False)
     display_order = models.PositiveIntegerField(default=0)
     qr_code_svg = models.TextField(blank=True)
+    prep_time_minutes = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ['display_order', 'name']
@@ -65,7 +66,7 @@ class Product(models.Model):
     def save(self, *args, **kwargs):
         is_new = self.pk is None
         super().save(*args, **kwargs)
-        if is_new:
+        if is_new or not self.qr_code_svg:
             self.generate_qr_code()
             Product.objects.filter(pk=self.pk).update(qr_code_svg=self.qr_code_svg)
 
@@ -107,7 +108,7 @@ class ProductVariation(models.Model):
     def save(self, *args, **kwargs):
         is_new = self.pk is None
         super().save(*args, **kwargs)
-        if is_new:
+        if is_new or not self.qr_code_svg:
             self.generate_qr_code()
             ProductVariation.objects.filter(pk=self.pk).update(qr_code_svg=self.qr_code_svg)
 
@@ -137,7 +138,7 @@ class GlobalExtra(models.Model):
     def save(self, *args, **kwargs):
         is_new = self.pk is None
         super().save(*args, **kwargs)
-        if is_new:
+        if is_new or not self.qr_code_svg:
             self.generate_qr_code()
             GlobalExtra.objects.filter(pk=self.pk).update(qr_code_svg=self.qr_code_svg)
 

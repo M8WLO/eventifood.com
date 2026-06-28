@@ -28,6 +28,7 @@ interface Product {
   has_variations: boolean
   is_visible: boolean
   out_of_stock: boolean
+  prep_time_minutes: number | null
   variations: Variation[]
   extras: ProductExtra[]
 }
@@ -59,6 +60,7 @@ interface ProductForm {
   has_variations: boolean
   base_price: string
   cost_price: string
+  prep_time_minutes: string
   variations: VariationForm[]
   extras: ExtraForm[]
 }
@@ -70,6 +72,7 @@ const EMPTY_FORM: ProductForm = {
   has_variations: false,
   base_price: '',
   cost_price: '',
+  prep_time_minutes: '',
   variations: [{ name: 'Standard', retail_price: '', cost_price: '' }],
   extras: [],
 }
@@ -162,6 +165,7 @@ export default function MenuPage() {
       has_variations: p.has_variations,
       base_price: p.base_price || (isSimple && p.variations[0] ? p.variations[0].retail_price : ''),
       cost_price: (!p.has_variations && p.variations[0]?.cost_price) ? p.variations[0].cost_price : '',
+      prep_time_minutes: p.prep_time_minutes != null ? String(p.prep_time_minutes) : '',
       variations: vars,
       extras: (p.extras || []).map((e) => ({ id: e.id, name: e.name, additional_price: e.additional_price })),
     })
@@ -236,6 +240,7 @@ export default function MenuPage() {
         description: form.description.trim(),
         has_variations: form.has_variations,
         base_price: form.has_variations ? null : form.base_price,
+        prep_time_minutes: form.prep_time_minutes ? parseInt(form.prep_time_minutes, 10) : null,
       }
 
       let productId = editingId
@@ -479,6 +484,21 @@ export default function MenuPage() {
                     rows={2}
                     placeholder="Optional description…"
                   />
+                </div>
+
+                {/* Prep time */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Estimated prep time (mins)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={240}
+                    value={form.prep_time_minutes}
+                    onChange={(e) => setForm((p) => ({ ...p, prep_time_minutes: e.target.value }))}
+                    className="input-field w-32"
+                    placeholder="e.g. 15"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Shown to customers on your ordering page. Leave blank to hide.</p>
                 </div>
 
                 {/* Pricing mode */}

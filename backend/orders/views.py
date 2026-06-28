@@ -155,6 +155,8 @@ class UpdateOrderStatusView(APIView):
             return Response({'detail': 'Invalid status.'}, status=status.HTTP_400_BAD_REQUEST)
         old_status = order.status
         order.status = new_status
+        if new_status == 'ready' and not order.ready_at:
+            order.ready_at = timezone.now()
         order.save()
         if old_status != 'ready' and new_status == 'ready':
             notify_order_ready(order)

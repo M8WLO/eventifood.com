@@ -321,6 +321,9 @@ class PrintMenuRenderView(APIView):
             if t == 'product':
                 obj = Product.objects.filter(pk=iid, category__tenant=tenant).first()
                 if obj:
+                    if not obj.qr_code_svg:
+                        obj.generate_qr_code()
+                        Product.objects.filter(pk=obj.pk).update(qr_code_svg=obj.qr_code_svg)
                     resolved.append({
                         'type': 'product', 'id': obj.pk,
                         'name': obj.name, 'description': obj.description,
@@ -329,8 +332,11 @@ class PrintMenuRenderView(APIView):
                         'qr_code_svg': obj.qr_code_svg,
                     })
             elif t == 'variation':
-                obj = ProductVariation.objects.select_related('product').filter(pk=iid, product__category__tenant=tenant).first()
+                obj = ProductVariation.objects.select_related('product__category__tenant').filter(pk=iid, product__category__tenant=tenant).first()
                 if obj:
+                    if not obj.qr_code_svg:
+                        obj.generate_qr_code()
+                        ProductVariation.objects.filter(pk=obj.pk).update(qr_code_svg=obj.qr_code_svg)
                     resolved.append({
                         'type': 'variation', 'id': obj.pk,
                         'name': f"{obj.product.name} — {obj.name}",
@@ -344,6 +350,9 @@ class PrintMenuRenderView(APIView):
             elif t == 'global_extra':
                 obj = GlobalExtra.objects.filter(pk=iid, tenant=tenant).first()
                 if obj:
+                    if not obj.qr_code_svg:
+                        obj.generate_qr_code()
+                        GlobalExtra.objects.filter(pk=obj.pk).update(qr_code_svg=obj.qr_code_svg)
                     resolved.append({
                         'type': 'global_extra', 'id': obj.pk,
                         'name': obj.name, 'description': obj.description,

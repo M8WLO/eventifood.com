@@ -27,7 +27,8 @@ class ProductPublicSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ['id', 'name', 'description', 'photo', 'base_price', 'is_visible',
-                  'out_of_stock', 'display_order', 'has_variations', 'variations', 'extras', 'qr_code_svg']
+                  'out_of_stock', 'display_order', 'has_variations', 'prep_time_minutes',
+                  'variations', 'extras', 'qr_code_svg']
 
 
 class ProductSellerSerializer(serializers.ModelSerializer):
@@ -38,7 +39,7 @@ class ProductSellerSerializer(serializers.ModelSerializer):
         model = Product
         fields = ['id', 'category', 'name', 'description', 'photo', 'base_price',
                   'has_variations', 'is_visible', 'out_of_stock', 'display_order',
-                  'variations', 'extras', 'qr_code_svg']
+                  'prep_time_minutes', 'variations', 'extras', 'qr_code_svg']
 
 
 class CategorySerializer(serializers.ModelSerializer):

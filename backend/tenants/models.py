@@ -23,6 +23,7 @@ class Tenant(models.Model):
         choices=[('payg', 'Pay As You Go (platform 2%)'), ('own', 'Own payment methods')],
         default='payg',
     )
+    wait_time_enabled = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['name']
