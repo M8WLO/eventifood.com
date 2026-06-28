@@ -9,6 +9,7 @@ import { setToken } from '@/lib/auth'
 export default function LoginPage() {
   const router = useRouter()
   const [form, setForm] = useState({ email: '', password: '' })
+  const [kitchenMode, setKitchenMode] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -19,10 +20,11 @@ export default function LoginPage() {
     try {
       const { data } = await api.post('/api/auth/login/', form)
       if (data.mfa_required) {
-        router.push(`/verify-otp?token=${encodeURIComponent(data.partial_token)}`)
+        const dest = kitchenMode ? '/seller/orders/board?kiosk=1' : '/seller/dashboard'
+        router.push(`/verify-otp?token=${encodeURIComponent(data.partial_token)}&redirect=${encodeURIComponent(dest)}`)
       } else {
         setToken(data.access, data.refresh)
-        router.push('/seller/dashboard')
+        router.push(kitchenMode ? '/seller/orders/board?kiosk=1' : '/seller/dashboard')
       }
     } catch {
       setError('Invalid email or password.')
@@ -56,17 +58,31 @@ export default function LoginPage() {
                 className="input-field" placeholder="••••••••"
               />
             </div>
+
+            {/* Kitchen only mode */}
+            <label className="flex items-start gap-3 cursor-pointer pt-1">
+              <input
+                type="checkbox"
+                checked={kitchenMode}
+                onChange={(e) => setKitchenMode(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded text-brand-600"
+              />
+              <div>
+                <span className="text-sm font-medium text-gray-800">Kitchen only mode</span>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Opens directly to the kitchen board. Sidebar access is controlled by your kitchen settings.
+                </p>
+              </div>
+            </label>
+
             {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
             <button type="submit" disabled={loading} className="btn-primary w-full">
-              {loading ? 'Signing in…' : 'Sign in'}
+              {loading ? 'Signing in…' : kitchenMode ? 'Sign in to kitchen' : 'Sign in'}
             </button>
           </form>
           <p className="text-center text-sm text-gray-500 mt-4">
             No account?{' '}
             <Link href="/register" className="text-brand-600 hover:underline font-medium">Create one free</Link>
-          </p>
-          <p className="text-center text-sm mt-3">
-            <Link href="/kitchen-login" className="text-gray-400 hover:text-gray-600">Kitchen mode login →</Link>
           </p>
         </div>
       </div>

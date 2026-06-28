@@ -36,12 +36,12 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'order_number', 'buyer_name', 'buyer_email', 'buyer_phone',
+        fields = ['id', 'order_number', 'daily_number', 'buyer_name', 'buyer_email', 'buyer_phone',
                   'status', 'total', 'notes', 'created_at', 'updated_at', 'items']
-        read_only_fields = ['id', 'order_number', 'total', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'order_number', 'daily_number', 'total', 'created_at', 'updated_at']
 
 
 class OrderStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
-        fields = ['order_number', 'status', 'buyer_name', 'created_at', 'updated_at']
+        fields = ['order_number', 'daily_number', 'status', 'buyer_name', 'created_at', 'updated_at']

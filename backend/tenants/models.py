@@ -13,6 +13,16 @@ class Tenant(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     qr_code_svg = models.TextField(blank=True)
     kitchen_nav_items = models.JSONField(default=list, blank=True)
+    order_number_mode = models.CharField(
+        max_length=10,
+        choices=[('daily', 'Daily (resets each day)'), ('total', 'Total (cumulative)')],
+        default='daily',
+    )
+    payment_mode = models.CharField(
+        max_length=10,
+        choices=[('payg', 'Pay As You Go (platform 2%)'), ('own', 'Own payment methods')],
+        default='payg',
+    )
 
     class Meta:
         ordering = ['name']

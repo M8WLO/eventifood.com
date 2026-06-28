@@ -62,6 +62,13 @@ export default function BasketPage() {
         items: basket.map((i) => ({ variation_id: i.variationId, quantity: i.quantity, extras: i.extras.map(e => e.id) })),
       })
       sessionStorage.removeItem('basket')
+      // Track all order numbers placed from this device for this vendor
+      const lsKey = `ef_orders_${slug}`
+      const existing: string[] = JSON.parse(localStorage.getItem(lsKey) || '[]')
+      if (!existing.includes(data.order_number)) {
+        existing.push(data.order_number)
+        localStorage.setItem(lsKey, JSON.stringify(existing))
+      }
       router.push(`/store/${slug}/order/${encodeURIComponent(data.order_number)}`)
     } catch {
       setError('Failed to place order. Please try again.')

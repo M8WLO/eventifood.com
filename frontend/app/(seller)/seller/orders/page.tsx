@@ -63,14 +63,8 @@ export default function OrdersPage() {
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
-        <button
-          onClick={() => window.open('/seller/orders/board', '_blank', 'width=1200,height=800')}
-          className="btn-secondary text-sm"
-        >
-          Open as kitchen window ↗
-        </button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Placed / Preparing */}

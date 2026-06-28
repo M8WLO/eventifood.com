@@ -10,6 +10,7 @@ class Order(models.Model):
     ]
     tenant = models.ForeignKey('tenants.Tenant', on_delete=models.CASCADE, related_name='orders')
     order_number = models.CharField(max_length=20)
+    daily_number = models.PositiveIntegerField(null=True, blank=True)
     buyer_name = models.CharField(max_length=100)
     buyer_email = models.EmailField()
     buyer_phone = models.CharField(max_length=20, blank=True)

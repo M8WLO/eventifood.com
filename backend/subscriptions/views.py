@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny, BasePermission
 
 from .models import Subscription, Plan
-from .serializers import SubscriptionSerializer, PlanSerializer
+from .serializers import SubscriptionSerializer, PlanSerializer, AdminSubscriptionSerializer
 
 
 class IsSuperAdmin(BasePermission):
@@ -142,3 +142,31 @@ class StripeWebhookView(APIView):
                 sub.save()
 
         return Response({'received': True})
+
+
+class AdminSubscriptionView(APIView):
+    permission_classes = [IsSuperAdmin]
+
+    def _get_sub(self, slug):
+        from tenants.models import Tenant
+        try:
+            tenant = Tenant.objects.get(slug=slug)
+            return tenant.subscription
+        except (Tenant.DoesNotExist, Subscription.DoesNotExist):
+            return None
+
+    def get(self, request, slug):
+        sub = self._get_sub(slug)
+        if not sub:
+            return Response({'detail': 'Subscription not found.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(AdminSubscriptionSerializer(sub).data)
+
+    def patch(self, request, slug):
+        sub = self._get_sub(slug)
+        if not sub:
+            return Response({'detail': 'Subscription not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = AdminSubscriptionSerializer(sub, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data)

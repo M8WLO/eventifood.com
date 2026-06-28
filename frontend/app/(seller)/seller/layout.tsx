@@ -12,6 +12,7 @@ const NAV = [
   { href: '/seller/menu', label: 'Menu', icon: '🍽️' },
   { href: '/seller/orders', label: 'Orders', icon: '🧾' },
   { href: '/seller/inventory', label: 'Inventory', icon: '📦' },
+  { href: '/seller/wastage', label: 'Wastage', icon: '🗑️' },
   { href: '/seller/analytics', label: 'Analytics', icon: '📊' },
   { href: '/seller/settings', label: 'Settings', icon: '⚙️' },
 ]

@@ -50,15 +50,25 @@ export default function DashboardPage() {
       <h2 className="text-lg font-semibold text-gray-700 mb-3">Quick actions</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link
-          href="/seller/orders"
+          href="/seller/orders/board"
           className="card hover:shadow-md transition-shadow flex items-center gap-4 cursor-pointer"
         >
-          <span className="text-3xl">🧾</span>
+          <span className="text-3xl">🍳</span>
           <div>
-            <p className="font-semibold text-gray-900">Order board</p>
+            <p className="font-semibold text-gray-900">Kitchen board</p>
             <p className="text-sm text-gray-500">Manage incoming orders live</p>
           </div>
         </Link>
+        <button
+          onClick={() => window.open('/seller/orders/display', '_blank')}
+          className="card hover:shadow-md transition-shadow flex items-center gap-4 cursor-pointer text-left w-full"
+        >
+          <span className="text-3xl">📺</span>
+          <div>
+            <p className="font-semibold text-gray-900">Customer display</p>
+            <p className="text-sm text-gray-500">Open ready orders on a second screen</p>
+          </div>
+        </button>
         <Link
           href="/seller/settings"
           className="card hover:shadow-md transition-shadow flex items-center gap-4 cursor-pointer"

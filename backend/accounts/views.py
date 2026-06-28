@@ -4,7 +4,7 @@ from datetime import timedelta
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 
@@ -154,6 +154,69 @@ class LogoutView(APIView):
             except Exception:
                 pass
         return Response({'detail': 'Logged out.'}, status=status.HTTP_200_OK)
+
+
+class IsSuperAdmin(BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and getattr(request.user, 'is_superadmin', False))
+
+
+class AdminUserDetailView(APIView):
+    permission_classes = [IsSuperAdmin]
+
+    def _get_user(self, pk):
+        try:
+            return User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        user = self._get_user(pk)
+        if not user:
+            return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({
+            'id': user.id,
+            'email': user.email,
+            'full_name': user.full_name,
+            'is_active': user.is_active,
+            'is_superadmin': user.is_superadmin,
+            'mfa_enabled': user.mfa_enabled,
+            'date_joined': user.date_joined,
+        })
+
+    def patch(self, request, pk):
+        user = self._get_user(pk)
+        if not user:
+            return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+        allowed = {'email', 'full_name', 'is_active', 'mfa_enabled'}
+        for field in allowed:
+            if field in request.data:
+                setattr(user, field, request.data[field])
+        user.save()
+        return Response({
+            'id': user.id,
+            'email': user.email,
+            'full_name': user.full_name,
+            'is_active': user.is_active,
+            'mfa_enabled': user.mfa_enabled,
+            'date_joined': user.date_joined,
+        })
+
+
+class AdminUserPasswordResetView(APIView):
+    permission_classes = [IsSuperAdmin]
+
+    def post(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+        new_password = request.data.get('password', '').strip()
+        if len(new_password) < 8:
+            return Response({'detail': 'Password must be at least 8 characters.'}, status=status.HTTP_400_BAD_REQUEST)
+        user.set_password(new_password)
+        user.save()
+        return Response({'detail': 'Password updated.'})
 
 
 class SetupInitialAdminView(APIView):

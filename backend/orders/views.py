@@ -5,7 +5,7 @@ from datetime import timedelta, date
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, BasePermission
 
 from catalog.models import ProductVariation, ProductExtra
 from notifications.services import notify_order_ready, send_order_confirmation_email
@@ -13,10 +13,22 @@ from .models import Order, OrderItem, OrderItemExtra
 from .serializers import PlaceOrderSerializer, OrderSerializer, OrderStatusSerializer
 
 
-def _next_order_number(tenant) -> str:
-    """Generate the next sequential order number for the tenant."""
-    count = Order.objects.filter(tenant=tenant).count()
-    return f"#{(count + 1):04d}"
+class IsSuperAdmin(BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and getattr(request.user, 'is_superadmin', False))
+
+
+def _next_order_numbers(tenant) -> tuple[str, int]:
+    """Return (order_number, daily_number) for a new order on this tenant."""
+    from django.db import transaction
+    with transaction.atomic():
+        # Lock all rows for this tenant to prevent concurrent duplicates
+        total_count = Order.objects.select_for_update().filter(tenant=tenant).count()
+        order_number = f"#{(total_count + 1):04d}"
+        today = timezone.now().date()
+        daily_count = Order.objects.filter(tenant=tenant, created_at__date=today).count()
+        daily_number = daily_count + 1
+    return order_number, daily_number
 
 
 class PlaceOrderView(APIView):
@@ -74,9 +86,11 @@ class PlaceOrderView(APIView):
                 'resolved_extras': resolved_extras,
             })
 
+        order_number, daily_number = _next_order_numbers(tenant)
         order = Order.objects.create(
             tenant=tenant,
-            order_number=_next_order_number(tenant),
+            order_number=order_number,
+            daily_number=daily_number,
             total=total,
             **data,
         )
@@ -145,6 +159,23 @@ class UpdateOrderStatusView(APIView):
         if old_status != 'ready' and new_status == 'ready':
             notify_order_ready(order)
         return Response(OrderSerializer(order).data)
+
+
+class PlatformStatsView(APIView):
+    """Superadmin only: total order counts across all tenants."""
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request):
+        today = timezone.now().date()
+        week_start = today - timedelta(days=6)
+        year_start = today.replace(month=1, day=1)
+        all_orders = Order.objects.all()
+        return Response({
+            'today':     all_orders.filter(created_at__date=today).count(),
+            'this_week': all_orders.filter(created_at__date__gte=week_start).count(),
+            'this_year': all_orders.filter(created_at__date__gte=year_start).count(),
+            'all_time':  all_orders.count(),
+        })
 
 
 class SalesReportView(APIView):

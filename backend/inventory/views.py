@@ -66,15 +66,23 @@ class StockRecordDetailView(APIView):
 
 
 class StockTodayView(APIView):
-    """Returns all products for the tenant with their stock record for today.
-    Creates an empty StockRecord (get_or_create) for any product that doesn't have one yet."""
+    """Returns all products for the tenant with their stock record for the given date (default: today).
+    Creates an empty StockRecord (get_or_create) for any product that doesn't have one yet.
+    Accepts optional ?date=YYYY-MM-DD query param."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         tenant = request.tenant
         if not tenant:
             return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
-        today = datetime.date.today()
+        date_param = request.query_params.get('date')
+        if date_param:
+            try:
+                today = datetime.date.fromisoformat(date_param)
+            except ValueError:
+                return Response({'detail': 'Invalid date. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            today = datetime.date.today()
         products = Product.objects.filter(category__tenant=tenant).select_related('category').order_by('category__display_order', 'display_order')
         result = []
         for product in products:

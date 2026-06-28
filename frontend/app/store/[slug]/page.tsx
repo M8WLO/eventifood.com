@@ -51,6 +51,14 @@ const THEME_COLORS: Record<string, { primary: string; dark: string; badge: strin
   sunset:  { primary: '#e11d48', dark: '#be123c', badge: '#9f1239' },
   ocean:   { primary: '#0891b2', dark: '#0e7490', badge: '#155e75' },
   forest:  { primary: '#16a34a', dark: '#15803d', badge: '#14532d' },
+  amber:   { primary: '#d97706', dark: '#b45309', badge: '#92400e' },
+  coral:   { primary: '#ea580c', dark: '#c2410c', badge: '#9a3412' },
+  ruby:    { primary: '#dc2626', dark: '#b91c1c', badge: '#991b1b' },
+  teal:    { primary: '#0d9488', dark: '#0f766e', badge: '#115e59' },
+  indigo:  { primary: '#4f46e5', dark: '#4338ca', badge: '#3730a3' },
+  navy:    { primary: '#1d4ed8', dark: '#1e40af', badge: '#1e3a8a' },
+  pink:    { primary: '#db2777', dark: '#be185d', badge: '#9d174d' },
+  slate:   { primary: '#475569', dark: '#334155', badge: '#1e293b' },
 }
 
 export default function StorefrontPage() {
