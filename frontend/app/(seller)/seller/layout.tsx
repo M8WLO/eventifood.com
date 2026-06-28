@@ -10,6 +10,7 @@ import api from '@/lib/api'
 const NAV = [
   { href: '/seller/dashboard', label: 'Dashboard', icon: '🏠' },
   { href: '/seller/menu', label: 'Menu', icon: '🍽️' },
+  { href: '/seller/menu/print', label: 'Print menus', icon: '🖨️' },
   { href: '/seller/orders', label: 'Orders', icon: '🧾' },
   { href: '/seller/inventory', label: 'Inventory', icon: '📦' },
   { href: '/seller/wastage', label: 'Wastage', icon: '🗑️' },

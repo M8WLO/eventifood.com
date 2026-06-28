@@ -13,6 +13,14 @@ Multi-tenant food truck ordering platform. Sellers get their own subdomain (acme
 - Project ID: `d7f20f14-393c-4f13-9d62-629552dabe04`
 - Token: stored in Claude memory (`reference_railway_eventifood.md`) — do NOT commit to repo
 
+## Railway Volumes
+| Volume | Service | Mount path | Purpose |
+|--------|---------|-----------|---------|
+| `backend-volume` | backend | `/app/media` | Uploaded media files (banners, logos) — persists across redeploys |
+| `postgres-volume` | Postgres | `/var/lib/postgresql/data` | Database — persists across redeploys |
+
+Django `MEDIA_ROOT = BASE_DIR / 'media'` resolves to `/app/media` in the Railway container, so uploads land on the volume automatically. No code changes needed to use it.
+
 ## Local dev
 
 ```bash

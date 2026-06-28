@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useEffect, useState, useRef, Suspense } from 'react'
+import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import api from '@/lib/api'
 
@@ -61,9 +61,10 @@ const THEME_COLORS: Record<string, { primary: string; dark: string; badge: strin
   slate:   { primary: '#475569', dark: '#334155', badge: '#1e293b' },
 }
 
-export default function StorefrontPage() {
+function StorefrontContent() {
   const params = useParams()
   const slug = params.slug as string
+  const searchParams = useSearchParams()
 
   const [categories, setCategories] = useState<Category[]>([])
   const [storeName, setStoreName] = useState('')
@@ -74,6 +75,8 @@ export default function StorefrontPage() {
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [extrasModal, setExtrasModal] = useState<{ product: Product; variation: Variation } | null>(null)
   const [selectedExtras, setSelectedExtras] = useState<Set<number>>(new Set())
+  const [addedToast, setAddedToast] = useState<string | null>(null)
+  const qrAutoAdded = useRef(false)
 
   useEffect(() => {
     api.defaults.headers.common['X-Tenant-Slug'] = slug
@@ -148,6 +151,54 @@ export default function StorefrontPage() {
     }
   }, [basket])
 
+  // Auto-add item from QR code URL params (?add=<product_id>&v=<variation_id>)
+  useEffect(() => {
+    if (categories.length === 0 || qrAutoAdded.current) return
+    const addId = searchParams.get('add')
+    const varId = searchParams.get('v')
+    if (!addId) return
+    qrAutoAdded.current = true
+
+    const productId = parseInt(addId, 10)
+    for (const cat of categories) {
+      const product = cat.products.find((p) => p.id === productId && p.is_visible && !p.out_of_stock)
+      if (!product) continue
+
+      if (varId) {
+        const variation = product.variations.find((v) => v.id === parseInt(varId, 10) && v.is_available)
+        if (variation) {
+          const available = product.extras.filter((e) => e.is_available)
+          if (available.length > 0) {
+            setSelectedExtras(new Set())
+            setExtrasModal({ product, variation })
+          } else {
+            commitToBasket(product, variation, [])
+            setAddedToast(`${product.name}${variation.name !== 'Standard' ? ' — ' + variation.name : ''} added!`)
+            setTimeout(() => setAddedToast(null), 3000)
+          }
+        }
+      } else {
+        const available = product.variations.filter((v) => v.is_available)
+        if (available.length === 1) {
+          const variation = available[0]
+          const hasExtras = product.extras.filter((e) => e.is_available).length > 0
+          if (hasExtras) {
+            setSelectedExtras(new Set())
+            setExtrasModal({ product, variation })
+          } else {
+            commitToBasket(product, variation, [])
+            setAddedToast(`${product.name} added!`)
+            setTimeout(() => setAddedToast(null), 3000)
+          }
+        } else if (available.length > 1) {
+          // Multi-variation product: expand the category so customer can choose
+          setExpanded((prev) => { const n = new Set(prev); n.add(cat.id); return n })
+        }
+      }
+      break
+    }
+  }, [categories, searchParams])
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -158,6 +209,13 @@ export default function StorefrontPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
+      {/* QR auto-add toast */}
+      {addedToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl bg-gray-900 text-white text-sm font-medium shadow-xl animate-fade-in">
+          ✓ {addedToast}
+        </div>
+      )}
+
       {/* Header */}
       {banner ? (
         <header className="relative w-full shadow" style={{ height: 180 }}>
@@ -342,5 +400,17 @@ export default function StorefrontPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function StorefrontPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-gray-400">Loading menu…</div>
+      </div>
+    }>
+      <StorefrontContent />
+    </Suspense>
   )
 }

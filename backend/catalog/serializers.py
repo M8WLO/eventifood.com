@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Product, ProductExtra, ProductVariation
+from .models import Category, Product, ProductExtra, ProductVariation, GlobalExtra, PrintMenu
 
 
 class ProductExtraSerializer(serializers.ModelSerializer):
@@ -9,17 +9,15 @@ class ProductExtraSerializer(serializers.ModelSerializer):
 
 
 class ProductVariationPublicSerializer(serializers.ModelSerializer):
-    """Excludes cost_price for buyer-facing endpoints."""
     class Meta:
         model = ProductVariation
-        fields = ['id', 'name', 'retail_price', 'photo', 'is_available']
+        fields = ['id', 'name', 'retail_price', 'photo', 'is_available', 'qr_code_svg']
 
 
 class ProductVariationSellerSerializer(serializers.ModelSerializer):
-    """Includes cost_price for seller endpoints."""
     class Meta:
         model = ProductVariation
-        fields = ['id', 'name', 'cost_price', 'retail_price', 'photo', 'is_available']
+        fields = ['id', 'name', 'cost_price', 'retail_price', 'photo', 'is_available', 'qr_code_svg']
 
 
 class ProductPublicSerializer(serializers.ModelSerializer):
@@ -28,7 +26,8 @@ class ProductPublicSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'description', 'photo', 'is_visible', 'out_of_stock', 'display_order', 'variations', 'extras']
+        fields = ['id', 'name', 'description', 'photo', 'base_price', 'is_visible',
+                  'out_of_stock', 'display_order', 'has_variations', 'variations', 'extras', 'qr_code_svg']
 
 
 class ProductSellerSerializer(serializers.ModelSerializer):
@@ -38,7 +37,8 @@ class ProductSellerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ['id', 'category', 'name', 'description', 'photo', 'base_price',
-                  'has_variations', 'is_visible', 'out_of_stock', 'display_order', 'variations', 'extras']
+                  'has_variations', 'is_visible', 'out_of_stock', 'display_order',
+                  'variations', 'extras', 'qr_code_svg']
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -55,3 +55,17 @@ class CategorySellerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ['id', 'name', 'display_order', 'products']
+
+
+class GlobalExtraSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GlobalExtra
+        fields = ['id', 'name', 'description', 'price', 'photo', 'is_available',
+                  'display_order', 'qr_code_svg']
+
+
+class PrintMenuSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PrintMenu
+        fields = ['id', 'name', 'size', 'items', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']

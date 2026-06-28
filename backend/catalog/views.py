@@ -3,11 +3,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
-from .models import Category, Product, ProductExtra, ProductVariation
+from .models import Category, Product, ProductExtra, ProductVariation, GlobalExtra, PrintMenu
 from .serializers import (
     CategorySerializer, CategorySellerSerializer,
     ProductSellerSerializer, ProductVariationSellerSerializer,
-    ProductExtraSerializer,
+    ProductExtraSerializer, GlobalExtraSerializer, PrintMenuSerializer,
 )
 
 
@@ -205,3 +205,158 @@ class VariationDetailView(APIView):
             return Response(status=status.HTTP_404_NOT_FOUND)
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class GlobalExtraListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        tenant = request.tenant
+        if not tenant:
+            return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
+        extras = GlobalExtra.objects.filter(tenant=tenant)
+        return Response(GlobalExtraSerializer(extras, many=True, context={'request': request}).data)
+
+    def post(self, request):
+        tenant = request.tenant
+        if not tenant:
+            return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = GlobalExtraSerializer(data=request.data, context={'request': request})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save(tenant=tenant)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class GlobalExtraDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, pk, tenant):
+        return GlobalExtra.objects.filter(pk=pk, tenant=tenant).first()
+
+    def patch(self, request, pk):
+        obj = self.get_object(pk, request.tenant)
+        if not obj:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        serializer = GlobalExtraSerializer(obj, data=request.data, partial=True, context={'request': request})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, pk):
+        obj = self.get_object(pk, request.tenant)
+        if not obj:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class PrintMenuListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        tenant = request.tenant
+        if not tenant:
+            return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
+        menus = PrintMenu.objects.filter(tenant=tenant)
+        return Response(PrintMenuSerializer(menus, many=True).data)
+
+    def post(self, request):
+        tenant = request.tenant
+        if not tenant:
+            return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = PrintMenuSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save(tenant=tenant)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class PrintMenuDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, pk, tenant):
+        return PrintMenu.objects.filter(pk=pk, tenant=tenant).first()
+
+    def get(self, request, pk):
+        obj = self.get_object(pk, request.tenant)
+        if not obj:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(PrintMenuSerializer(obj).data)
+
+    def patch(self, request, pk):
+        obj = self.get_object(pk, request.tenant)
+        if not obj:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        serializer = PrintMenuSerializer(obj, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, pk):
+        obj = self.get_object(pk, request.tenant)
+        if not obj:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class PrintMenuRenderView(APIView):
+    """Returns fully resolved item data for a print menu."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        tenant = request.tenant
+        if not tenant:
+            return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
+        menu = PrintMenu.objects.filter(pk=pk, tenant=tenant).first()
+        if not menu:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        resolved = []
+        for item in menu.items:
+            t, iid = item.get('type'), item.get('id')
+            if t == 'product':
+                obj = Product.objects.filter(pk=iid, category__tenant=tenant).first()
+                if obj:
+                    resolved.append({
+                        'type': 'product', 'id': obj.pk,
+                        'name': obj.name, 'description': obj.description,
+                        'price': str(obj.base_price) if obj.base_price else None,
+                        'photo': request.build_absolute_uri(obj.photo.url) if obj.photo else None,
+                        'qr_code_svg': obj.qr_code_svg,
+                    })
+            elif t == 'variation':
+                obj = ProductVariation.objects.select_related('product').filter(pk=iid, product__category__tenant=tenant).first()
+                if obj:
+                    resolved.append({
+                        'type': 'variation', 'id': obj.pk,
+                        'name': f"{obj.product.name} — {obj.name}",
+                        'description': obj.product.description,
+                        'price': str(obj.retail_price),
+                        'photo': request.build_absolute_uri(obj.photo.url) if obj.photo else (
+                            request.build_absolute_uri(obj.product.photo.url) if obj.product.photo else None
+                        ),
+                        'qr_code_svg': obj.qr_code_svg,
+                    })
+            elif t == 'global_extra':
+                obj = GlobalExtra.objects.filter(pk=iid, tenant=tenant).first()
+                if obj:
+                    resolved.append({
+                        'type': 'global_extra', 'id': obj.pk,
+                        'name': obj.name, 'description': obj.description,
+                        'price': str(obj.price),
+                        'photo': request.build_absolute_uri(obj.photo.url) if obj.photo else None,
+                        'qr_code_svg': obj.qr_code_svg,
+                    })
+
+        return Response({
+            'id': menu.pk,
+            'name': menu.name,
+            'size': menu.size,
+            'items': resolved,
+            'banner': request.build_absolute_uri(tenant.banner.url) if tenant.banner else None,
+            'store_name': tenant.name,
+        })
