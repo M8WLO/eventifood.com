@@ -63,7 +63,7 @@ class TenantDetailView(APIView):
         if not tenant.qr_code_svg or 'viewBox' not in tenant.qr_code_svg:
             tenant.generate_qr_code()
             tenant.save(update_fields=['qr_code_svg'])
-        return Response(TenantSerializer(tenant).data)
+        return Response(TenantSerializer(tenant, context={'request': request}).data)
 
     def patch(self, request):
         tenant = request.tenant
@@ -72,7 +72,7 @@ class TenantDetailView(APIView):
         # Ensure the requesting user is a member
         if not tenant.members.filter(user=request.user).exists():
             return Response({'detail': 'Forbidden.'}, status=status.HTTP_403_FORBIDDEN)
-        serializer = TenantSerializer(tenant, data=request.data, partial=True)
+        serializer = TenantSerializer(tenant, data=request.data, partial=True, context={'request': request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
@@ -91,7 +91,7 @@ class MyTenantView(APIView):
         if not tenant.qr_code_svg or 'viewBox' not in tenant.qr_code_svg:
             tenant.generate_qr_code()
             tenant.save(update_fields=['qr_code_svg'])
-        return Response(TenantSerializer(tenant).data)
+        return Response(TenantSerializer(tenant, context={'request': request}).data)
 
 
 class TenantPublicView(APIView):
@@ -101,7 +101,7 @@ class TenantPublicView(APIView):
         tenant = request.tenant
         if not tenant:
             return Response({'detail': 'Store not found.'}, status=status.HTTP_404_NOT_FOUND)
-        serializer = TenantPublicSerializer(tenant)
+        serializer = TenantPublicSerializer(tenant, context={'request': request})
         return Response(serializer.data)
 
 
