@@ -21,6 +21,12 @@ interface Order {
   items: OrderItem[]
 }
 
+const PREV_STATUS: Record<string, string> = {
+  preparing: 'placed',
+  ready: 'preparing',
+  collected: 'ready',
+}
+
 const STATUS_LABELS: Record<string, string> = {
   placed: 'Placed',
   preparing: 'Preparing',
@@ -102,6 +108,7 @@ function OrderCard({ order, onStatus, nextStatus, nextLabel }: {
   nextStatus: string
   nextLabel: string
 }) {
+  const prevStatus = PREV_STATUS[order.status]
   return (
     <div className="card border-l-4 border-brand-400">
       <div className="flex items-start justify-between mb-2">
@@ -119,8 +126,15 @@ function OrderCard({ order, onStatus, nextStatus, nextLabel }: {
         ))}
       </ul>
       {order.notes && <p className="text-xs text-brand-700 bg-brand-50 px-2 py-1 rounded mb-2">Note: {order.notes}</p>}
-      <div className="flex items-center justify-between">
-        <span className="font-semibold text-gray-900">£{order.total}</span>
+      <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-100">
+        {prevStatus ? (
+          <button
+            onClick={() => onStatus(order.id, prevStatus)}
+            className="text-sm text-gray-400 hover:text-gray-600 font-medium px-2 py-1 rounded hover:bg-gray-100 transition-colors"
+          >
+            ↩ Undo
+          </button>
+        ) : <span />}
         <button
           onClick={() => onStatus(order.id, nextStatus)}
           className="btn-primary text-sm py-1 px-3"

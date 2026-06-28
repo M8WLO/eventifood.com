@@ -38,6 +38,12 @@ const NAV_MAP: Record<string, { href: string; label: string; icon: string }> = {
   settings:   { href: '/seller/settings',   label: 'Settings',   icon: '⚙️' },
 }
 
+const PREV_STATUS: Record<string, string> = {
+  preparing: 'placed',
+  ready: 'preparing',
+  collected: 'ready',
+}
+
 const STATUS_CONFIG: Record<string, { label: string; color: string; next: string; nextLabel: string }> = {
   placed: {
     label: 'New',
@@ -280,16 +286,25 @@ function BoardContent() {
                       )}
                     </div>
 
-                    {/* Bottom row: collected button centred, only for ready orders */}
-                    {o.status === 'ready' && (
-                      <div className="flex justify-center pt-1 border-t border-gray-700/50">
+                    {/* Bottom row: undo left, collected right (for ready) */}
+                    {PREV_STATUS[o.status] && (
+                      <div className="flex items-center justify-between pt-1 border-t border-gray-700/50">
                         <button
-                          onClick={() => setStatus(o, 'collected')}
+                          onClick={() => setStatus(o, PREV_STATUS[o.status])}
                           disabled={isAdvancing}
-                          className="px-6 py-2 rounded-full font-semibold text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 transition-all active:scale-95"
+                          className="px-4 py-1.5 rounded-full text-sm font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-700/60 transition-all active:scale-95"
                         >
-                          Collected ✓
+                          ↩ Undo
                         </button>
+                        {o.status === 'ready' && (
+                          <button
+                            onClick={() => setStatus(o, 'collected')}
+                            disabled={isAdvancing}
+                            className="px-6 py-2 rounded-full font-semibold text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 transition-all active:scale-95"
+                          >
+                            Collected ✓
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -372,15 +387,15 @@ function BoardContent() {
                       }`}>
                         {o.status === 'placed' ? 'New' : o.status}
                       </span>
-                      {o.status === 'collected' && (
+                      {PREV_STATUS[o.status] && (
                         <button
                           onClick={async () => {
-                            await api.patch(`/api/orders/seller/${o.id}/status/`, { status: 'ready' })
+                            await api.patch(`/api/orders/seller/${o.id}/status/`, { status: PREV_STATUS[o.status] })
                             openHistory()
                           }}
-                          className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors"
+                          className="bg-gray-600 hover:bg-gray-500 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors"
                         >
-                          Undo ↩
+                          ↩ Undo
                         </button>
                       )}
                     </div>
