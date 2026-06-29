@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import api from '@/lib/api'
 
 interface TenantRow {
@@ -48,10 +49,9 @@ const SUB_BADGE: Record<string, string> = {
   cancelled: 'bg-gray-100 text-gray-500',
 }
 
-type Tab = 'platform' | 'tenants'
-
 export default function SuperAdminPage() {
-  const [tab, setTab] = useState<Tab>('platform')
+  const searchParams = useSearchParams()
+  const tab = searchParams.get('tab') === 'tenants' ? 'tenants' : 'platform'
 
   const [tenants, setTenants] = useState<TenantRow[]>([])
   const [search, setSearch] = useState('')
@@ -209,29 +209,6 @@ export default function SuperAdminPage() {
           </div>
         </div>
       )}
-
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-gray-200">
-        {([['platform', 'Platform settings'], ['tenants', 'Tenant management']] as [Tab, string][]).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              tab === key
-                ? 'border-brand-600 text-brand-700'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {label}
-            {key === 'tenants' && tenants.length > 0 && (
-              <span className="ml-2 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">{tenants.length}</span>
-            )}
-            {key === 'tenants' && orphanedUsers.length > 0 && (
-              <span className="ml-1 text-xs bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full">{orphanedUsers.length} orphaned</span>
-            )}
-          </button>
-        ))}
-      </div>
 
       {/* ── Platform settings tab ── */}
       {tab === 'platform' && (

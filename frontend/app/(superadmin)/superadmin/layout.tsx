@@ -1,19 +1,22 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { isAuthenticated, getUser } from '@/lib/auth'
 
 const NAV = [
-  { href: '/superadmin', label: 'Tenants', icon: '🏪' },
-  { href: '/superadmin/plans', label: 'Plans', icon: '💳' },
+  { href: '/superadmin', label: 'Platform Settings', icon: '⚙️', tab: null },
+  { href: '/superadmin?tab=tenants', label: 'Tenant Management', icon: '🏪', tab: 'tenants' },
+  { href: '/superadmin/plans', label: 'Plans', icon: '💳', tab: null },
 ]
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [ready, setReady] = useState(false)
+  const currentTab = searchParams.get('tab')
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -45,7 +48,17 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
         </div>
         <nav className="flex items-center gap-1 ml-4">
           {NAV.map((item) => {
-            const active = pathname === item.href || (item.href !== '/superadmin' && pathname.startsWith(item.href))
+            let active: boolean
+            if (item.href === '/superadmin') {
+              // Platform Settings: active when on /superadmin with no tab param
+              active = pathname === '/superadmin' && !currentTab
+            } else if (item.tab) {
+              // Tenant Management: active when tab param matches
+              active = pathname === '/superadmin' && currentTab === item.tab
+            } else {
+              // Plans and other full-path links
+              active = pathname.startsWith(item.href)
+            }
             return (
               <Link
                 key={item.href}

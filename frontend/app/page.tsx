@@ -25,9 +25,7 @@ const FALLBACK_PLANS: Plan[] = [
 async function fetchPlans(): Promise<Plan[]> {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-    const res = await fetch(`${apiUrl}/api/subscriptions/plans/`, {
-      next: { revalidate: 300 },
-    })
+    const res = await fetch(`${apiUrl}/api/subscriptions/plans/`, { next: { revalidate: 300 } })
     if (!res.ok) return FALLBACK_PLANS
     const data = await res.json()
     return Array.isArray(data) && data.length > 0 ? data : FALLBACK_PLANS
@@ -36,331 +34,34 @@ async function fetchPlans(): Promise<Plan[]> {
   }
 }
 
-const features = [
-  {
-    icon: '🏪',
-    title: 'Your Own Branded Store',
-    desc: 'Get a fully branded online storefront at yourname.eventifood.com — no tech skills needed. Upload your logo, choose your colours, and you\'re open for orders.',
-  },
-  {
-    icon: '📱',
-    title: 'QR Code Ordering',
-    desc: 'Customers scan a QR code at your van, browse your full menu on their phone and place their order in seconds — no app download, no fuss.',
-  },
-  {
-    icon: '🍳',
-    title: 'Live Kitchen Board',
-    desc: 'Every new order lands instantly on your kitchen screen. Mark items ready with a single tap and keep your team in perfect sync at peak service.',
-  },
-  {
-    icon: '📊',
-    title: 'Profit & Sales Tracking',
-    desc: 'See your best-selling items, daily revenue, and wastage figures at a glance. Make smarter menu decisions backed by real numbers.',
-  },
-  {
-    icon: '🔒',
-    title: 'Secure Multi-Factor Login',
-    desc: 'Every seller account is protected with email MFA — so only you can access your dashboard, even if your password is ever compromised.',
-  },
-  {
-    icon: '📦',
-    title: 'Inventory Management',
-    desc: 'Set stock levels per item, track what\'s running low, and automatically hide sold-out items from your menu so customers only see what\'s available.',
-  },
-]
-
-const buyerSteps = [
-  { step: '1', title: 'Scan the QR code', desc: 'At the van, on a flyer, or in an event programme — one scan opens your full menu.' },
-  { step: '2', title: 'Browse & add to basket', desc: 'Pick your items, customise options, and review your order before paying.' },
-  { step: '3', title: 'Pay securely', desc: 'Card or mobile payment processed in seconds. No cash, no waiting.' },
-  { step: '4', title: 'Track your order live', desc: 'Watch your order move from Received → Preparing → Ready — right on your phone.' },
-]
-
-const testimonials = [
-  {
-    quote: 'Since switching to Eventifood our queue time halved. Customers love scanning the QR and we\'re handling 40% more orders at peak.',
-    name: 'Sarah M.',
-    van: 'The Sizzle Shack',
-  },
-  {
-    quote: 'Setting up took 20 minutes. The kitchen board is brilliant — my staff don\'t miss a single order even when it\'s manic.',
-    name: 'Tom K.',
-    van: 'Kogi Street',
-  },
-  {
-    quote: 'The analytics showed me my loaded fries outsell plain fries 3-to-1. I dropped plain fries and my margins went up overnight.',
-    name: 'Priya R.',
-    van: 'Spice Route',
-  },
-]
-
-const whyUs = [
-  { icon: '⚡', text: 'Up and running in under 30 minutes' },
-  { icon: '📱', text: 'No app for customers to download' },
-  { icon: '💳', text: 'Secure card & mobile payments built-in' },
-  { icon: '🌐', text: 'Works at any event, market or festival' },
-  { icon: '📶', text: 'Works on basic mobile data' },
-  { icon: '🛡️', text: 'MFA-protected seller accounts' },
-  { icon: '🎨', text: 'Fully branded to your van\'s identity' },
-  { icon: '📈', text: 'Real-time order & profit visibility' },
-]
-
-/* ─── Inline SVG illustration components ─── */
+/* ── Decorative SVG components ── */
 
 function FoodTruckSVG({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 340 200" className={className} aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-      {/* Van body */}
       <rect x="8" y="65" width="260" height="95" rx="10" fill="currentColor" opacity="0.85" />
-      {/* Cab section */}
       <rect x="240" y="44" width="80" height="116" rx="10" fill="currentColor" opacity="1" />
-      {/* Windscreen */}
       <rect x="250" y="55" width="58" height="50" rx="5" fill="white" opacity="0.25" />
-      {/* Windscreen glare */}
-      <line x1="254" y1="58" x2="260" y2="100" stroke="white" strokeWidth="1.5" opacity="0.3" />
-      {/* Awning over serving window */}
       <path d="M18 68 L155 68 L142 50 L30 50 Z" fill="#F5A623" />
       <line x1="55" y1="50" x2="50" y2="68" stroke="white" strokeWidth="2" opacity="0.5" />
       <line x1="82" y1="50" x2="77" y2="68" stroke="white" strokeWidth="2" opacity="0.5" />
       <line x1="109" y1="50" x2="104" y2="68" stroke="white" strokeWidth="2" opacity="0.5" />
       <line x1="135" y1="50" x2="130" y2="68" stroke="white" strokeWidth="2" opacity="0.5" />
-      {/* Serving window frame */}
       <rect x="25" y="72" width="108" height="60" rx="4" fill="white" opacity="0.18" stroke="white" strokeWidth="1.5" strokeOpacity="0.3" />
-      {/* Counter shelf */}
       <rect x="25" y="125" width="108" height="7" rx="2" fill="white" opacity="0.15" />
-      {/* Chef hand in window */}
       <ellipse cx="60" cy="118" rx="10" ry="7" fill="#F5A623" opacity="0.6" />
       <ellipse cx="90" cy="115" rx="12" ry="8" fill="#F5A623" opacity="0.5" />
-      {/* Side panel text area */}
-      <rect x="160" y="82" width="68" height="30" rx="4" fill="white" opacity="0.12" />
-      {/* Wheel arches */}
-      <ellipse cx="75" cy="160" rx="35" ry="12" fill="black" opacity="0.15" />
-      <ellipse cx="255" cy="160" rx="35" ry="12" fill="black" opacity="0.15" />
-      {/* Wheels */}
       <circle cx="75" cy="158" r="28" fill="#1f2937" />
       <circle cx="75" cy="158" r="16" fill="#374151" />
       <circle cx="75" cy="158" r="7" fill="#6b7280" />
-      <line x1="75" y1="142" x2="75" y2="174" stroke="#4b5563" strokeWidth="3" />
-      <line x1="59" y1="158" x2="91" y2="158" stroke="#4b5563" strokeWidth="3" />
       <circle cx="255" cy="158" r="28" fill="#1f2937" />
       <circle cx="255" cy="158" r="16" fill="#374151" />
       <circle cx="255" cy="158" r="7" fill="#6b7280" />
-      <line x1="255" y1="142" x2="255" y2="174" stroke="#4b5563" strokeWidth="3" />
-      <line x1="239" y1="158" x2="271" y2="158" stroke="#4b5563" strokeWidth="3" />
-      {/* Chassis rail */}
       <rect x="50" y="152" width="270" height="6" rx="3" fill="#374151" />
-      {/* Chimney */}
       <rect x="180" y="40" width="8" height="28" rx="3" fill="#374151" />
-      {/* Steam puffs */}
       <circle cx="184" cy="34" r="7" fill="white" opacity="0.35" />
       <circle cx="178" cy="24" r="6" fill="white" opacity="0.25" />
-      <circle cx="188" cy="16" r="5" fill="white" opacity="0.18" />
-      {/* Roof sign */}
       <rect x="30" y="38" width="100" height="18" rx="4" fill="#F5A623" opacity="0.9" />
-      <rect x="34" y="41" width="92" height="12" rx="2" fill="#d97706" opacity="0.4" />
-      {/* Bunting flags on roof */}
-      <path d="M30 38 L60 28 L90 38 L120 28 L150 38" stroke="#F5A623" strokeWidth="1.5" fill="none" strokeOpacity="0.6" />
-      <polygon points="58,28 48,40 68,40" fill="#ef4444" opacity="0.7" />
-      <polygon points="88,28 78,40 98,40" fill="#3b82f6" opacity="0.7" />
-      <polygon points="118,28 108,40 128,40" fill="#22c55e" opacity="0.7" />
-    </svg>
-  )
-}
-
-function CrowdSilhouetteSVG({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 800 120" className={className} aria-hidden="true" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMax meet">
-      {/* Back row — shorter, lighter */}
-      <ellipse cx="30" cy="95" rx="18" ry="24" fill="currentColor" opacity="0.3" />
-      <ellipse cx="72" cy="90" rx="16" ry="22" fill="currentColor" opacity="0.25" />
-      <ellipse cx="112" cy="93" rx="17" ry="26" fill="currentColor" opacity="0.28" />
-      <ellipse cx="155" cy="88" rx="15" ry="21" fill="currentColor" opacity="0.3" />
-      <ellipse cx="195" cy="92" rx="18" ry="25" fill="currentColor" opacity="0.25" />
-      <ellipse cx="238" cy="87" rx="16" ry="23" fill="currentColor" opacity="0.28" />
-      <ellipse cx="278" cy="91" rx="17" ry="24" fill="currentColor" opacity="0.3" />
-      <ellipse cx="320" cy="86" rx="16" ry="22" fill="currentColor" opacity="0.25" />
-      <ellipse cx="362" cy="90" rx="18" ry="26" fill="currentColor" opacity="0.28" />
-      <ellipse cx="404" cy="87" rx="15" ry="22" fill="currentColor" opacity="0.3" />
-      <ellipse cx="446" cy="92" rx="17" ry="24" fill="currentColor" opacity="0.25" />
-      <ellipse cx="488" cy="88" rx="16" ry="23" fill="currentColor" opacity="0.28" />
-      <ellipse cx="530" cy="91" rx="18" ry="25" fill="currentColor" opacity="0.3" />
-      <ellipse cx="572" cy="86" rx="15" ry="21" fill="currentColor" opacity="0.25" />
-      <ellipse cx="614" cy="93" rx="17" ry="26" fill="currentColor" opacity="0.28" />
-      <ellipse cx="656" cy="89" rx="16" ry="23" fill="currentColor" opacity="0.3" />
-      <ellipse cx="698" cy="91" rx="18" ry="24" fill="currentColor" opacity="0.25" />
-      <ellipse cx="740" cy="87" rx="15" ry="22" fill="currentColor" opacity="0.28" />
-      <ellipse cx="780" cy="93" rx="17" ry="25" fill="currentColor" opacity="0.3" />
-      {/* Front row — taller, darker, with raised hands */}
-      <ellipse cx="50" cy="108" rx="20" ry="30" fill="currentColor" opacity="0.55" />
-      <line x1="50" y1="82" x2="40" y2="60" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.45" />
-      <ellipse cx="95" cy="105" rx="19" ry="28" fill="currentColor" opacity="0.5" />
-      <ellipse cx="140" cy="110" rx="21" ry="32" fill="currentColor" opacity="0.55" />
-      <line x1="140" y1="80" x2="152" y2="55" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.45" />
-      <ellipse cx="185" cy="106" rx="18" ry="27" fill="currentColor" opacity="0.5" />
-      <ellipse cx="230" cy="109" rx="20" ry="30" fill="currentColor" opacity="0.55" />
-      <line x1="230" y1="82" x2="218" y2="58" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.45" />
-      <ellipse cx="275" cy="104" rx="19" ry="28" fill="currentColor" opacity="0.5" />
-      <ellipse cx="320" cy="110" rx="21" ry="31" fill="currentColor" opacity="0.55" />
-      <ellipse cx="366" cy="106" rx="18" ry="28" fill="currentColor" opacity="0.5" />
-      <line x1="366" y1="80" x2="378" y2="56" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.45" />
-      <ellipse cx="412" cy="108" rx="20" ry="30" fill="currentColor" opacity="0.55" />
-      <ellipse cx="458" cy="105" rx="19" ry="27" fill="currentColor" opacity="0.5" />
-      <line x1="458" y1="80" x2="446" y2="58" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.45" />
-      <ellipse cx="504" cy="110" rx="21" ry="32" fill="currentColor" opacity="0.55" />
-      <ellipse cx="550" cy="106" rx="18" ry="28" fill="currentColor" opacity="0.5" />
-      <ellipse cx="596" cy="109" rx="20" ry="30" fill="currentColor" opacity="0.55" />
-      <line x1="596" y1="82" x2="608" y2="57" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.45" />
-      <ellipse cx="642" cy="104" rx="19" ry="27" fill="currentColor" opacity="0.5" />
-      <ellipse cx="688" cy="109" rx="21" ry="31" fill="currentColor" opacity="0.55" />
-      <line x1="688" y1="80" x2="676" y2="56" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.45" />
-      <ellipse cx="734" cy="106" rx="18" ry="28" fill="currentColor" opacity="0.5" />
-      <ellipse cx="778" cy="110" rx="20" ry="30" fill="currentColor" opacity="0.55" />
-    </svg>
-  )
-}
-
-function QueueSilhouetteSVG({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 420 160" className={className} aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-      {/* Ground line */}
-      <line x1="0" y1="148" x2="420" y2="148" stroke="currentColor" strokeWidth="1.5" opacity="0.2" />
-      {/* Person 1 — excited, holding phone */}
-      <circle cx="50" cy="50" r="18" fill="currentColor" opacity="0.7" />
-      <rect x="36" y="68" width="28" height="42" rx="6" fill="currentColor" opacity="0.65" />
-      <rect x="54" y="55" width="14" height="10" rx="2" fill="currentColor" opacity="0.4" />
-      <line x1="64" y1="85" x2="80" y2="75" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.6" />
-      <line x1="36" y1="85" x2="20" y2="92" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.6" />
-      <line x1="50" y1="110" x2="42" y2="148" stroke="currentColor" strokeWidth="5" strokeLinecap="round" opacity="0.6" />
-      <line x1="50" y1="110" x2="58" y2="148" stroke="currentColor" strokeWidth="5" strokeLinecap="round" opacity="0.6" />
-      {/* Person 2 — tall */}
-      <circle cx="120" cy="42" r="20" fill="currentColor" opacity="0.65" />
-      <rect x="104" y="62" width="32" height="48" rx="6" fill="currentColor" opacity="0.6" />
-      <line x1="104" y1="80" x2="86" y2="70" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.55" />
-      <line x1="136" y1="82" x2="154" y2="88" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.55" />
-      <line x1="116" y1="110" x2="108" y2="148" stroke="currentColor" strokeWidth="5" strokeLinecap="round" opacity="0.6" />
-      <line x1="124" y1="110" x2="132" y2="148" stroke="currentColor" strokeWidth="5" strokeLinecap="round" opacity="0.6" />
-      {/* Person 3 — checking phone */}
-      <circle cx="192" cy="52" r="17" fill="currentColor" opacity="0.7" />
-      <rect x="178" y="69" width="28" height="40" rx="6" fill="currentColor" opacity="0.65" />
-      <rect x="165" y="78" width="13" height="18" rx="2" fill="currentColor" opacity="0.5" />
-      <line x1="178" y1="82" x2="165" y2="80" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.6" />
-      <line x1="206" y1="82" x2="222" y2="76" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.55" />
-      <line x1="188" y1="109" x2="180" y2="148" stroke="currentColor" strokeWidth="5" strokeLinecap="round" opacity="0.6" />
-      <line x1="196" y1="109" x2="204" y2="148" stroke="currentColor" strokeWidth="5" strokeLinecap="round" opacity="0.6" />
-      {/* Person 4 — short */}
-      <circle cx="256" cy="62" r="15" fill="currentColor" opacity="0.6" />
-      <rect x="243" y="77" width="26" height="35" rx="5" fill="currentColor" opacity="0.55" />
-      <line x1="243" y1="88" x2="228" y2="96" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.5" />
-      <line x1="269" y1="88" x2="284" y2="82" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.5" />
-      <line x1="250" y1="112" x2="244" y2="148" stroke="currentColor" strokeWidth="5" strokeLinecap="round" opacity="0.55" />
-      <line x1="262" y1="112" x2="268" y2="148" stroke="currentColor" strokeWidth="5" strokeLinecap="round" opacity="0.55" />
-      {/* Person 5 */}
-      <circle cx="318" cy="48" r="19" fill="currentColor" opacity="0.65" />
-      <rect x="303" y="67" width="30" height="44" rx="6" fill="currentColor" opacity="0.6" />
-      <line x1="303" y1="82" x2="286" y2="74" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.55" />
-      <line x1="333" y1="80" x2="350" y2="68" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.55" />
-      <line x1="312" y1="111" x2="304" y2="148" stroke="currentColor" strokeWidth="5" strokeLinecap="round" opacity="0.6" />
-      <line x1="324" y1="111" x2="332" y2="148" stroke="currentColor" strokeWidth="5" strokeLinecap="round" opacity="0.6" />
-      {/* Person 6 */}
-      <circle cx="378" cy="55" r="16" fill="currentColor" opacity="0.6" />
-      <rect x="364" y="71" width="28" height="38" rx="5" fill="currentColor" opacity="0.55" />
-      <line x1="364" y1="85" x2="348" y2="90" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.5" />
-      <line x1="392" y1="84" x2="408" y2="78" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.5" />
-      <line x1="372" y1="109" x2="364" y2="148" stroke="currentColor" strokeWidth="5" strokeLinecap="round" opacity="0.55" />
-      <line x1="384" y1="109" x2="392" y2="148" stroke="currentColor" strokeWidth="5" strokeLinecap="round" opacity="0.55" />
-      {/* Dotted queue line */}
-      <line x1="0" y1="148" x2="420" y2="148" stroke="currentColor" strokeWidth="2" strokeDasharray="6 6" opacity="0.18" />
-    </svg>
-  )
-}
-
-function FestivalStageSVG({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 600 200" className={className} aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-      {/* Stage platform */}
-      <rect x="100" y="130" width="400" height="20" rx="4" fill="currentColor" opacity="0.4" />
-      <rect x="80" y="148" width="440" height="12" rx="3" fill="currentColor" opacity="0.25" />
-      {/* Stage back wall */}
-      <rect x="110" y="50" width="380" height="82" rx="4" fill="currentColor" opacity="0.12" />
-      {/* Left truss tower */}
-      <rect x="108" y="20" width="16" height="114" rx="2" fill="currentColor" opacity="0.4" />
-      <line x1="112" y1="30" x2="120" y2="40" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-      <line x1="120" y1="30" x2="112" y2="40" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-      <line x1="112" y1="50" x2="120" y2="60" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-      <line x1="120" y1="50" x2="112" y2="60" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-      <line x1="112" y1="70" x2="120" y2="80" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-      <line x1="120" y1="70" x2="112" y2="80" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-      <line x1="112" y1="90" x2="120" y2="100" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-      {/* Right truss tower */}
-      <rect x="476" y="20" width="16" height="114" rx="2" fill="currentColor" opacity="0.4" />
-      <line x1="480" y1="30" x2="488" y2="40" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-      <line x1="488" y1="30" x2="480" y2="40" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-      <line x1="480" y1="50" x2="488" y2="60" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-      <line x1="488" y1="50" x2="480" y2="60" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-      <line x1="480" y1="70" x2="488" y2="80" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-      <line x1="488" y1="70" x2="480" y2="80" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-      {/* Top roof bar */}
-      <rect x="108" y="16" width="384" height="8" rx="2" fill="currentColor" opacity="0.45" />
-      {/* Spotlights */}
-      <polygon points="140,24 128,130 152,130" fill="currentColor" opacity="0.06" />
-      <polygon points="220,24 200,130 240,130" fill="currentColor" opacity="0.06" />
-      <polygon points="300,24 278,130 322,130" fill="currentColor" opacity="0.06" />
-      <polygon points="380,24 360,130 400,130" fill="currentColor" opacity="0.06" />
-      <polygon points="460,24 448,130 472,130" fill="currentColor" opacity="0.06" />
-      {/* Spotlight heads */}
-      <rect x="133" y="14" width="14" height="8" rx="2" fill="currentColor" opacity="0.6" />
-      <rect x="213" y="14" width="14" height="8" rx="2" fill="currentColor" opacity="0.6" />
-      <rect x="293" y="14" width="14" height="8" rx="2" fill="currentColor" opacity="0.6" />
-      <rect x="373" y="14" width="14" height="8" rx="2" fill="currentColor" opacity="0.6" />
-      <rect x="453" y="14" width="14" height="8" rx="2" fill="currentColor" opacity="0.6" />
-      {/* Stage acts — 3 figure silhouettes */}
-      <ellipse cx="260" cy="105" rx="12" ry="12" fill="currentColor" opacity="0.45" />
-      <rect x="250" y="117" width="20" height="30" rx="4" fill="currentColor" opacity="0.4" />
-      <line x1="250" y1="125" x2="234" y2="118" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="0.4" />
-      <line x1="270" y1="123" x2="282" y2="110" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="0.4" />
-      <line x1="255" y1="147" x2="250" y2="162" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.4" />
-      <line x1="265" y1="147" x2="270" y2="162" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.4" />
-      <ellipse cx="300" cy="100" rx="13" ry="13" fill="currentColor" opacity="0.45" />
-      <rect x="289" y="113" width="22" height="32" rx="4" fill="currentColor" opacity="0.4" />
-      <line x1="289" y1="120" x2="272" y2="110" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="0.4" />
-      <line x1="311" y1="118" x2="325" y2="104" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="0.4" />
-      <line x1="295" y1="145" x2="288" y2="162" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.4" />
-      <line x1="305" y1="145" x2="312" y2="162" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity="0.4" />
-      <ellipse cx="340" cy="107" rx="11" ry="11" fill="currentColor" opacity="0.45" />
-      <rect x="330" y="118" width="20" height="28" rx="4" fill="currentColor" opacity="0.4" />
-      <line x1="330" y1="126" x2="318" y2="135" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="0.4" />
-      <line x1="350" y1="124" x2="362" y2="116" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="0.4" />
-      {/* Music notes floating */}
-      <text x="170" y="90" fontSize="16" fill="currentColor" opacity="0.35">♪</text>
-      <text x="395" y="80" fontSize="20" fill="currentColor" opacity="0.3">♫</text>
-      <text x="420" y="100" fontSize="14" fill="currentColor" opacity="0.25">♩</text>
-      <text x="155" y="110" fontSize="12" fill="currentColor" opacity="0.28">♬</text>
-      {/* Crowd below stage */}
-      <ellipse cx="150" cy="178" rx="16" ry="20" fill="currentColor" opacity="0.35" />
-      <line x1="150" y1="160" x2="140" y2="140" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="0.3" />
-      <ellipse cx="195" cy="175" rx="15" ry="18" fill="currentColor" opacity="0.3" />
-      <ellipse cx="240" cy="180" rx="16" ry="20" fill="currentColor" opacity="0.35" />
-      <line x1="240" y1="162" x2="252" y2="142" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="0.3" />
-      <ellipse cx="285" cy="176" rx="15" ry="19" fill="currentColor" opacity="0.3" />
-      <ellipse cx="330" cy="179" rx="16" ry="20" fill="currentColor" opacity="0.35" />
-      <ellipse cx="375" cy="174" rx="15" ry="18" fill="currentColor" opacity="0.3" />
-      <line x1="375" y1="158" x2="363" y2="140" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="0.3" />
-      <ellipse cx="420" cy="178" rx="16" ry="20" fill="currentColor" opacity="0.35" />
-      <ellipse cx="465" cy="175" rx="15" ry="19" fill="currentColor" opacity="0.3" />
-    </svg>
-  )
-}
-
-function MusicNotesSVG({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 200 120" className={className} aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-      <text x="10" y="45" fontSize="28" fill="currentColor" opacity="0.4" transform="rotate(-15,30,45)">♪</text>
-      <text x="60" y="30" fontSize="20" fill="currentColor" opacity="0.3" transform="rotate(8,70,30)">♫</text>
-      <text x="110" y="55" fontSize="32" fill="currentColor" opacity="0.35" transform="rotate(-8,126,55)">♩</text>
-      <text x="155" y="35" fontSize="22" fill="currentColor" opacity="0.28" transform="rotate(12,166,35)">♬</text>
-      <text x="35" y="85" fontSize="18" fill="currentColor" opacity="0.25" transform="rotate(5,44,85)">♪</text>
-      <text x="90" y="100" fontSize="24" fill="currentColor" opacity="0.3" transform="rotate(-10,102,100)">♫</text>
-      <text x="145" y="90" fontSize="16" fill="currentColor" opacity="0.22" transform="rotate(15,153,90)">♩</text>
     </svg>
   )
 }
@@ -368,9 +69,7 @@ function MusicNotesSVG({ className }: { className?: string }) {
 function BuntingSVG({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 800 60" className={className} aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-      {/* String */}
       <path d="M0 10 Q50 30 100 10 Q150 30 200 10 Q250 30 300 10 Q350 30 400 10 Q450 30 500 10 Q550 30 600 10 Q650 30 700 10 Q750 30 800 10" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.4" />
-      {/* Flags — alternating colours via opacity tricks */}
       <polygon points="50,29 40,55 60,55" fill="currentColor" opacity="0.5" />
       <polygon points="100,9 90,35 110,35" fill="currentColor" opacity="0.3" />
       <polygon points="150,29 140,55 160,55" fill="currentColor" opacity="0.5" />
@@ -390,56 +89,138 @@ function BuntingSVG({ className }: { className?: string }) {
   )
 }
 
+/* ── Phone mockup wrapper ── */
+function PhoneMockup({ src, alt }: { src: string; alt: string }) {
+  return (
+    <div className="relative mx-auto" style={{ width: 240, height: 480 }}>
+      {/* Phone shell */}
+      <div className="absolute inset-0 rounded-[2.5rem] border-[6px] border-gray-800 bg-gray-800 shadow-2xl overflow-hidden">
+        {/* Notch */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-5 bg-gray-800 rounded-b-xl z-10" />
+        <div className="absolute inset-0 overflow-hidden rounded-[2rem]">
+          <Image src={src} alt={alt} fill style={{ objectFit: 'cover', objectPosition: 'top' }} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Browser mockup wrapper ── */
+function BrowserMockup({ src, alt, url }: { src: string; alt: string; url?: string }) {
+  return (
+    <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-2xl bg-white">
+      <div className="bg-gray-100 px-4 py-2.5 flex items-center gap-2 border-b border-gray-200">
+        <div className="flex gap-1.5">
+          <span className="w-3 h-3 rounded-full bg-red-400" />
+          <span className="w-3 h-3 rounded-full bg-yellow-400" />
+          <span className="w-3 h-3 rounded-full bg-green-400" />
+        </div>
+        <span className="flex-1 bg-white text-gray-400 text-xs font-mono px-3 py-1 rounded-md border border-gray-200 text-center truncate">
+          🔒 {url || 'eventifood.com'}
+        </span>
+      </div>
+      <div className="relative" style={{ aspectRatio: '16/10', minHeight: 240 }}>
+        <Image src={src} alt={alt} fill style={{ objectFit: 'cover', objectPosition: 'top' }} />
+      </div>
+    </div>
+  )
+}
+
+const sellerFeatures = [
+  { icon: '🍽️', title: 'Dynamic Menus', desc: 'Build your full menu with categories, items, photos, extras and modifiers. Change prices, add specials, and hide sold-out items — all from your phone.' },
+  { icon: '🎪', title: 'Event Menus', desc: 'Running at a festival this weekend? Create a one-off event menu with its own prices, items and branding — completely separate from your regular menu.' },
+  { icon: '🖨️', title: 'Printable Menus with QR Codes', desc: 'Generate A4/A3/A2 print-ready menus with individual QR codes on every item. Customers scan the item they want and it goes straight into their basket.' },
+  { icon: '📦', title: 'Inventory Control', desc: 'Set stock levels per item. Sold-out items disappear from the customer menu automatically. No more apologising at the hatch.' },
+  { icon: '📊', title: 'Sales Analytics', desc: "See exactly what's selling, when your busiest periods are, and where your profit is coming from — then make smarter decisions about your menu and stock." },
+  { icon: '💳', title: 'Multi-Provider Payments', desc: 'Accept card, Apple Pay, Google Pay, PayPal and more. You choose which providers suit your business — we handle the routing.' },
+]
+
+const customerBenefits = [
+  { icon: '📱', title: 'No App. Just Scan.', desc: 'Customers scan a QR code and your full menu opens instantly in their browser. No download, no account, no friction.' },
+  { icon: '🔔', title: 'Live Order Status', desc: 'From "Being Prepared" to "Ready for Collection" — customers see their order status update in real time. No shouting names across the crowd.' },
+  { icon: '💸', title: '100% Cashless', desc: 'Secure card and mobile payments processed at the point of ordering. No cash handling, no floats, no counting takings at the end of the night.' },
+  { icon: '🛒', title: 'Extras & Customisation', desc: 'Extra cheese? No onions? Customers add modifiers right in the app — no back-and-forth with staff, and the kitchen sees exactly what was requested.' },
+]
+
+const throughputPoints = [
+  { stat: '6×', label: 'Less time spent at the hatch per customer', sub: 'Orders placed on the phone before customers even reach the front' },
+  { stat: '40%', label: 'More orders served per hour', sub: 'Staff spend time cooking, not taking orders and handling cash' },
+  { stat: '0', label: 'Cash transactions to reconcile', sub: 'Every penny tracked digitally — end of day close-out in seconds' },
+  { stat: '30 min', label: 'From sign-up to first live order', sub: 'Upload your menu, get your QR code, start trading today' },
+]
+
+const whyUs = [
+  { icon: '⚡', title: 'Live in 30 minutes', desc: 'Register, upload your menu and your QR-code store is ready to trade. No developer needed.' },
+  { icon: '📵', title: 'No app for customers', desc: 'Customers order through their phone browser — nothing to download, nothing standing between them and your food.' },
+  { icon: '💳', title: 'Fully cashless', desc: 'Card, Apple Pay, Google Pay, PayPal — take your pick. No cash float, no end-of-night counting.' },
+  { icon: '🔔', title: 'Real-time customer alerts', desc: 'Customers get a live notification the moment their order is ready. Stop shouting names over the noise of the crowd.' },
+  { icon: '🎨', title: 'Branded to your van', desc: 'Upload your logo, choose your theme colour, and your store looks like you — not a generic checkout page.' },
+  { icon: '🎪', title: 'Festival & event ready', desc: 'Create a bespoke event menu for any occasion with custom items, pricing and branding — ready in minutes.' },
+  { icon: '📈', title: 'Know your numbers', desc: 'Top sellers, hourly revenue, profit per item — all the data you need to run a tighter, more profitable van.' },
+  { icon: '❄️', title: 'Pay nothing in winter', desc: 'Start free. On PAYG you only pay a small fee when orders come through. Park the van for the winter and pay absolutely nothing.' },
+  { icon: '🔒', title: 'Secure by default', desc: 'Every seller account is protected with email MFA. Your dashboard, your data, your business.' },
+  { icon: '🖨️', title: 'Printed QR menus', desc: 'Generate print-ready menus with QR codes on every single item. Stick them on your van, hand them out at the gate, or pin them to tables.' },
+  { icon: '📦', title: 'Automatic stock control', desc: 'Running low? Sold out? Items hide themselves from the customer menu automatically so you never disappoint.' },
+  { icon: '🌐', title: 'Your own branded URL', desc: 'yourname.eventifood.com — share it everywhere. Every customer who clicks lands on your menu, not a marketplace.' },
+]
+
+const testimonials = [
+  {
+    quote: 'We used to serve 40 customers an hour on a good day. Now we're hitting 60+ because people order ahead while queuing. The kitchen board means nothing gets missed.',
+    name: 'Sarah M.', van: 'The Sizzle Shack',
+  },
+  {
+    quote: 'Setting up took 20 minutes. The live order alerts are brilliant — customers stop hovering at the hatch because they know their phone will buzz when it\'s ready.',
+    name: 'Tom K.', van: 'Kogi Street',
+  },
+  {
+    quote: 'I ran a festival event menu for the weekend — totally different prices and items from my regular menu, live within 10 minutes. Absolutely game-changing.',
+    name: 'Priya R.', van: 'Spice Route',
+  },
+]
+
 export default async function LandingPage() {
   const plans = await fetchPlans()
+
   return (
     <div className="min-h-screen bg-white">
 
-      {/* Nav */}
+      {/* ── Nav ── */}
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-purple-100 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-24 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Image src="/logo.png" alt="Eventifood" width={280} height={96} className="h-20 w-auto" priority />
           </Link>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
-            <a href="#features" className="hover:text-brand-600 transition-colors">Features</a>
+            <a href="#for-sellers" className="hover:text-brand-600 transition-colors">For Sellers</a>
+            <a href="#for-customers" className="hover:text-brand-600 transition-colors">For Customers</a>
             <a href="#how-it-works" className="hover:text-brand-600 transition-colors">How it works</a>
             <a href="#pricing" className="hover:text-brand-600 transition-colors">Pricing</a>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors hidden sm:block">
-              Sign in
-            </Link>
-            <Link href="/register" className="btn-primary text-sm px-5 py-2">
-              Get started free
-            </Link>
+            <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors hidden sm:block">Sign in</Link>
+            <Link href="/register" className="btn-primary text-sm px-5 py-2">Get started free</Link>
           </div>
         </div>
       </nav>
 
-      {/* Hero */}
+      {/* ── Hero ── */}
       <section className="relative overflow-hidden bg-gradient-to-br from-brand-500 via-brand-600 to-brand-800 text-white">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-gold-400 blur-3xl -translate-y-1/2 translate-x-1/2" />
           <div className="absolute bottom-0 left-0 w-72 h-72 rounded-full bg-gold-500 blur-3xl translate-y-1/2 -translate-x-1/2" />
         </div>
-        {/* Food truck illustration — right side */}
-        <FoodTruckSVG className="absolute right-0 bottom-12 w-80 xl:w-96 text-white opacity-20 pointer-events-none hidden lg:block" />
-        {/* Music notes — left float */}
-        <MusicNotesSVG className="absolute left-4 top-24 w-40 text-white pointer-events-none hidden md:block" />
+        <FoodTruckSVG className="absolute right-0 bottom-12 w-80 xl:w-96 text-white opacity-15 pointer-events-none hidden lg:block" />
+
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-24 md:py-32">
           <div className="max-w-3xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-sm font-medium px-4 py-1.5 rounded-full mb-8">
-              <span className="w-2 h-2 rounded-full bg-gold-400 animate-pulse" />
-              Now in beta — free for early sellers
-            </div>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-tight mb-6">
-              Your food van.<br />
-              <span className="text-gold-400">Your own store at</span><br />
-              <span className="text-gold-300 text-3xl sm:text-4xl font-mono">yourname.eventifood.com</span>
+              Sell more food.<br />
+              <span className="text-gold-400">Serve queues 6× faster.</span><br />
+              <span className="text-gold-300 text-3xl sm:text-4xl">Go completely cashless.</span>
             </h1>
             <p className="text-lg sm:text-xl text-purple-100 max-w-2xl mx-auto mb-10">
-              Register in minutes and get a fully branded QR-code ordering store on your own subdomain — live kitchen board, profit tracking, inventory management and secure MFA. Open for business in 30 minutes.
+              Eventifood gives your food van a branded online store, live kitchen board, customer order alerts and full analytics — all in one platform. Your customers scan, order and pay on their phone. You cook. No cash. No chaos.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/register" className="bg-gold-500 hover:bg-gold-600 text-white font-bold text-lg py-4 px-10 rounded-xl shadow-lg hover:shadow-xl transition-all">
@@ -450,11 +231,9 @@ export default async function LandingPage() {
               </a>
             </div>
             <p className="mt-6 text-sm text-purple-200">No credit card required. Up and running in 30 minutes.</p>
-            <p className="mt-2 text-xs text-purple-300">Some features available on premium tiers only.</p>
           </div>
         </div>
 
-        {/* Curved bottom */}
         <div className="absolute bottom-0 left-0 right-0">
           <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
             <path d="M0 60L1440 60L1440 20C1200 60 240 60 0 20L0 60Z" fill="white" />
@@ -462,34 +241,35 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* Trust bar */}
-      <section className="py-10 border-b border-gray-100">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6">
-          <p className="text-center text-sm text-gray-400 font-medium uppercase tracking-widest mb-6">Why food vans love Eventifood</p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {whyUs.slice(0, 4).map((item) => (
-              <div key={item.text} className="flex items-center gap-2 text-sm text-gray-600">
-                <span className="text-xl">{item.icon}</span>
-                <span>{item.text}</span>
+      {/* ── Impact stats ── */}
+      <section className="py-12 bg-white border-b border-gray-100">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+            {throughputPoints.map((p) => (
+              <div key={p.stat} className="text-center">
+                <p className="text-4xl sm:text-5xl font-extrabold text-brand-600 mb-1">{p.stat}</p>
+                <p className="text-sm font-semibold text-gray-800 mb-1">{p.label}</p>
+                <p className="text-xs text-gray-400 leading-snug">{p.sub}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section id="features" className="py-20 bg-white">
+      {/* ══ FOR SELLERS ══ */}
+      <section id="for-sellers" className="py-20 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-14">
+            <span className="inline-block bg-brand-100 text-brand-700 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide mb-4">For Van Owners</span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">
-              Everything you need to run your van
+              Everything you need to run your van better
             </h2>
             <p className="text-lg text-gray-500 max-w-2xl mx-auto">
-              One platform — from taking orders at the hatch to closing your books at the end of the day.
+              One platform from taking the first order at the hatch to closing your books at the end of the night.
             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((f) => (
+            {sellerFeatures.map((f) => (
               <div key={f.title} className="group rounded-2xl border border-gray-100 p-7 hover:border-brand-200 hover:shadow-md transition-all">
                 <div className="w-12 h-12 rounded-xl bg-brand-50 flex items-center justify-center text-2xl mb-5 group-hover:bg-brand-100 transition-colors">
                   {f.icon}
@@ -502,74 +282,286 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* Smart domain routing callout */}
-      <section className="py-16 bg-gradient-to-r from-brand-50 to-purple-50 border-y border-brand-100">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center gap-10">
+      {/* ── Kitchen Board feature callout ── */}
+      <section className="py-16 bg-gray-950 text-white">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center gap-12">
           <div className="flex-1">
-            <span className="inline-block bg-brand-100 text-brand-700 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide mb-4">Smart Domain Routing</span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-4">
-              Your store at <span className="text-brand-600">yourname.eventifood.com</span>
-            </h2>
-            <p className="text-gray-600 mb-6 leading-relaxed">
-              The moment you register, you get a unique branded URL. Share it on social media, print it on packaging, or embed it in a QR code — every customer lands directly on <em>your</em> menu, not a generic directory.
+            <span className="inline-block bg-brand-600 text-white text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide mb-4">Live Kitchen Board</span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold mb-4">Never miss a single order, even at peak service</h2>
+            <p className="text-gray-400 mb-6 leading-relaxed">
+              Every paid order appears on your kitchen screen instantly. No phone calls, no paper slips, no shouted orders that get lost in the noise. One tap marks it preparing. Another tap marks it ready — and the customer's phone lights up the moment you do.
             </p>
-            <ul className="space-y-3 text-sm text-gray-600">
+            <ul className="space-y-3 text-sm text-gray-300">
               {[
-                'Instant subdomain — live the second you register',
-                'Full-screen mobile menu with your branding',
-                'Custom colours and logo throughout',
-                'Shareable link for Instagram, Facebook & TikTok bios',
+                'Instant order stream — every order paid online appears in seconds',
+                'One-tap flow: New → Preparing → Ready → Collected',
+                'Customer notified the instant their order is ready — no name-calling',
+                'Works on any screen — tablet propped up, laptop, second monitor',
+                'Undo button if you tap by mistake',
+                'History view for the full shift record',
               ].map((t) => (
                 <li key={t} className="flex items-start gap-2">
-                  <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-gold-400 flex items-center justify-center text-white text-xs font-bold">✓</span>
-                  {t}
+                  <span className="text-gold-400 font-bold mt-0.5 shrink-0">✓</span> {t}
                 </li>
               ))}
             </ul>
           </div>
-          <div className="flex-1 max-w-sm mx-auto">
-            <div className="bg-white rounded-2xl shadow-xl border border-brand-100 overflow-hidden">
-              <div className="bg-brand-600 px-4 py-3 flex items-center gap-2">
-                <div className="flex gap-1.5"><span className="w-3 h-3 rounded-full bg-red-400" /><span className="w-3 h-3 rounded-full bg-yellow-400" /><span className="w-3 h-3 rounded-full bg-green-400" /></div>
-                <span className="text-white/80 text-xs font-mono flex-1 text-center">🔒 thesizzleshack.eventifood.com</span>
-              </div>
-              <div className="p-5">
-                <div className="text-center mb-4">
-                  <div className="w-16 h-16 rounded-full bg-brand-50 border-4 border-brand-200 mx-auto mb-2 flex items-center justify-center text-2xl">🔥</div>
-                  <p className="font-bold text-gray-900">The Sizzle Shack</p>
-                  <p className="text-xs text-gray-400">Burgers · Loaded Fries · Shakes</p>
-                </div>
+          <div className="flex-1 max-w-lg w-full">
+            <BrowserMockup src="/Kitchen View.png" alt="Kitchen Board — Live Orders" url="eventifood.com/seller/orders/board" />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Queue reduction / throughput ── */}
+      <section className="py-20 bg-gradient-to-br from-gold-50 to-orange-50 border-y border-gold-100">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-12">
+            <span className="inline-block bg-gold-400 text-white text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide mb-4">Throughput & Revenue</span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">
+              Sell more food in the same number of hours
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              When customers order on their phone before they reach the front, your hatch becomes a collection point — not a bottleneck. Your staff stop taking orders and start focusing entirely on cooking.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-8 mb-12">
+            <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm">
+              <h3 className="font-extrabold text-gray-900 text-lg mb-4 flex items-center gap-2">
+                <span className="text-2xl">😰</span> Without Eventifood
+              </h3>
+              <ul className="space-y-3 text-sm text-gray-600">
                 {[
-                  { name: 'Classic Smash Burger', price: '£9.50' },
-                  { name: 'Loaded Cheese Fries', price: '£5.00' },
-                  { name: 'Strawberry Shake', price: '£4.50' },
-                ].map((item) => (
-                  <div key={item.name} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
-                    <span className="text-sm text-gray-700">{item.name}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-brand-600">{item.price}</span>
-                      <button className="w-6 h-6 rounded-full bg-brand-600 text-white text-xs font-bold flex items-center justify-center hover:bg-brand-700">+</button>
-                    </div>
-                  </div>
-                ))}
-                <button className="mt-4 w-full bg-gold-500 hover:bg-gold-600 text-white font-bold py-2.5 rounded-lg text-sm transition-colors">
-                  View basket (0)
-                </button>
+                  'Customer joins queue, waits, reaches hatch',
+                  'Staff take verbal order — clarify extras, misheard items',
+                  'Cash handled, change given, hands contaminated',
+                  'Customer hangs around the hatch waiting',
+                  'Another customer shouts they want to add something',
+                  'Staff call the name — nobody hears over the crowd',
+                  'Repeat for every single customer',
+                ].map((t) => (<li key={t} className="flex items-start gap-2"><span className="text-red-400 mt-0.5">✗</span>{t}</li>))}
+              </ul>
+            </div>
+            <div className="bg-white rounded-2xl border border-brand-200 p-8 shadow-sm">
+              <h3 className="font-extrabold text-gray-900 text-lg mb-4 flex items-center gap-2">
+                <span className="text-2xl">🚀</span> With Eventifood
+              </h3>
+              <ul className="space-y-3 text-sm text-gray-600">
+                {[
+                  'Customer scans QR, browses the full menu on their phone',
+                  'Places order with customisations — perfectly captured',
+                  'Pays in seconds — card, Apple Pay, Google Pay',
+                  'Kitchen board lights up instantly — staff start cooking',
+                  'Customer steps aside and waits comfortably',
+                  'Phone buzzes: "Ready for collection" — they walk up and go',
+                  'Queue clears 6× faster. Staff never stop cooking.',
+                ].map((t) => (<li key={t} className="flex items-start gap-2"><span className="text-green-500 font-bold mt-0.5">✓</span>{t}</li>))}
+              </ul>
+            </div>
+          </div>
+          <div className="bg-brand-700 rounded-2xl p-8 text-white text-center shadow-xl">
+            <p className="text-4xl font-extrabold mb-2 text-gold-400">600% faster queue throughput</p>
+            <p className="text-brand-200 text-lg">Van owners using Eventifood report serving up to 6× more customers per hour at peak events — with less stress on staff and fewer mistakes on every order.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Edit product / menu management ── */}
+      <section className="py-16 bg-white">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row-reverse items-center gap-12">
+          <div className="flex-1">
+            <span className="inline-block bg-brand-100 text-brand-700 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide mb-4">Menu Management</span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-4">Your full menu — built in minutes, changed in seconds</h2>
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              Add categories, items, photos, pricing, variations (sizes, meal deals) and extras (add cheese, remove onion). Update prices on the fly, hide items that have sold out, and your live store updates immediately.
+            </p>
+            <ul className="space-y-3 text-sm text-gray-600">
+              {[
+                'Unlimited categories and items',
+                'Single price or size/variation pricing (Small / Regular / Large)',
+                'Extras and removals with + / − pricing',
+                'Item photos uploaded from your phone',
+                'Cost price tracking for profit visibility per item',
+                'Changes go live on your store the moment you save',
+              ].map((t) => (
+                <li key={t} className="flex items-start gap-2">
+                  <span className="text-brand-500 font-bold mt-0.5 shrink-0">✓</span> {t}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="flex-1 max-w-xs mx-auto">
+            <PhoneMockup src="/Edit Product Details.png" alt="Edit Product Details" />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Print menus callout ── */}
+      <section className="py-16 bg-gray-50 border-y border-gray-100">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center gap-12">
+          <div className="flex-1">
+            <span className="inline-block bg-brand-100 text-brand-700 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide mb-4">Print Menus</span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-4">Printed menus — with a QR code on every single item</h2>
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              Generate a professional A4, A3 or A2 print-ready menu with your store's branding. Every item has its own individual QR code — customers scan the item they want and it drops straight into their basket. No searching through the menu, no typing — just scan and go.
+            </p>
+            <ul className="space-y-3 text-sm text-gray-600">
+              {[
+                'A4 / A3 / A2 sizes — pin to your van, hand out at the gate, or use as table cards',
+                'A QR code on every item — tap to add directly to basket',
+                'Store QR code in the header for scanning the full menu',
+                'Download as PDF or print directly from the browser',
+                'Always up to date — regenerate any time you change your menu',
+              ].map((t) => (
+                <li key={t} className="flex items-start gap-2">
+                  <span className="text-brand-500 font-bold mt-0.5 shrink-0">✓</span> {t}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="flex-1 max-w-lg w-full">
+            <BrowserMockup src="/print menu.png" alt="Print menu with QR codes" url="eventifood.com/print-menu/1" />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Analytics callout ── */}
+      <section className="py-16 bg-white">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row-reverse items-center gap-12">
+          <div className="flex-1">
+            <span className="inline-block bg-brand-100 text-brand-700 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide mb-4">Analytics</span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-4">Know exactly what's working — and what isn't</h2>
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              See your top-selling items, busiest trading hours, daily revenue and profit per item. Stop guessing which products to push and which to cut — let your actual data tell you.
+            </p>
+            <ul className="space-y-3 text-sm text-gray-600">
+              {[
+                'Top-selling items by quantity and revenue',
+                'Revenue by day, week and trading period',
+                'Gross and net profit per item (requires cost prices)',
+                'Busiest and quietest trading hours at a glance',
+                'Identify what to promote, reprice or remove',
+              ].map((t) => (
+                <li key={t} className="flex items-start gap-2">
+                  <span className="text-brand-500 font-bold mt-0.5 shrink-0">✓</span> {t}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="flex-1 max-w-lg w-full">
+            <BrowserMockup src="/Analytics.png" alt="Sales analytics dashboard" url="eventifood.com/seller/analytics" />
+          </div>
+        </div>
+      </section>
+
+      {/* ══ FOR CUSTOMERS ══ */}
+      <section id="for-customers" className="py-20 bg-gradient-to-b from-brand-50 to-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-14">
+            <span className="inline-block bg-gold-400 text-white text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide mb-4">For Your Customers</span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">
+              The ordering experience your customers will love
+            </h2>
+            <p className="text-lg text-gray-500 max-w-2xl mx-auto">
+              No app. No account. No friction. Just scan, order, pay, and wait comfortably — knowing their phone will tell them the moment their food is ready.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+            {customerBenefits.map((f) => (
+              <div key={f.title} className="rounded-2xl border border-brand-100 bg-white p-6 shadow-sm">
+                <div className="text-3xl mb-4">{f.icon}</div>
+                <h3 className="font-bold text-gray-900 mb-2">{f.title}</h3>
+                <p className="text-gray-500 text-sm leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Customer journey — phone screenshots */}
+          <div className="text-center mb-10">
+            <h3 className="text-xl font-extrabold text-gray-900 mb-2">From scan to collection — the full customer journey</h3>
+            <p className="text-gray-500 text-sm">Real screenshots from the Eventifood customer experience</p>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 items-end">
+            <div className="text-center space-y-3">
+              <PhoneMockup src="/Customer Order Screen.png" alt="Customer browsing the menu" />
+              <div className="bg-brand-600 text-white rounded-xl px-3 py-2">
+                <p className="text-xs font-bold uppercase tracking-wide mb-0.5">Step 1</p>
+                <p className="text-sm font-semibold">Browse & add to basket</p>
+                <p className="text-xs text-brand-200 mt-1">Full menu on their phone — photos, extras, prices</p>
+              </div>
+            </div>
+            <div className="text-center space-y-3">
+              <div className="flex items-center justify-center h-[480px] rounded-[2.5rem] border-[6px] border-gray-800 bg-gray-800 shadow-2xl overflow-hidden">
+                <div className="text-center px-6">
+                  <div className="text-5xl mb-4">💳</div>
+                  <p className="text-white font-bold text-sm">Pay securely</p>
+                  <p className="text-gray-400 text-xs mt-2">Card · Apple Pay · Google Pay · PayPal</p>
+                  <p className="text-xs text-gray-500 mt-3">Processed in seconds.<br />No cash. No change.</p>
+                </div>
+              </div>
+              <div className="bg-gold-500 text-white rounded-xl px-3 py-2">
+                <p className="text-xs font-bold uppercase tracking-wide mb-0.5">Step 2</p>
+                <p className="text-sm font-semibold">Pay on their phone</p>
+                <p className="text-xs text-yellow-100 mt-1">Card, Apple Pay, Google Pay or PayPal</p>
+              </div>
+            </div>
+            <div className="text-center space-y-3">
+              <PhoneMockup src="/Being Prepared.png" alt="Order being prepared" />
+              <div className="bg-orange-500 text-white rounded-xl px-3 py-2">
+                <p className="text-xs font-bold uppercase tracking-wide mb-0.5">Step 3</p>
+                <p className="text-sm font-semibold">Watch it live</p>
+                <p className="text-xs text-orange-100 mt-1">Real-time status on their screen — no more hovering at the hatch</p>
+              </div>
+            </div>
+            <div className="text-center space-y-3">
+              <PhoneMockup src="/ready for collection.png" alt="Ready for collection notification" />
+              <div className="bg-green-600 text-white rounded-xl px-3 py-2">
+                <p className="text-xs font-bold uppercase tracking-wide mb-0.5">Step 4</p>
+                <p className="text-sm font-semibold">Phone buzzes: Ready!</p>
+                <p className="text-xs text-green-100 mt-1">Customer comes to collect — staff never shout a name again</p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* How it works — buyer */}
+      {/* ── Cash-free section ── */}
+      <section className="py-16 bg-gray-900 text-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+          <div className="text-5xl mb-6">💳</div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">Go completely cashless</h2>
+          <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-10">
+            Every transaction is digital. No float to manage before the event. No cash to count at the end. No contaminated hands during food prep. No shortfall at the bank on Monday morning. Just a clean, accurate digital record of every single sale.
+          </p>
+          <div className="grid sm:grid-cols-3 gap-6">
+            {[
+              { icon: '🧼', title: 'Hygienic', desc: 'Staff never handle cash during food prep — reducing contamination risk and satisfying food hygiene requirements.' },
+              { icon: '🔐', title: 'Secure', desc: 'No risk of theft at the hatch. Every payment is digital, traceable and instantly reconciled against your orders.' },
+              { icon: '⚡', title: 'Fast', desc: 'Card and mobile payments are 3× faster than cash. Shorter time at the hatch means a shorter queue behind every customer.' },
+            ].map((c) => (
+              <div key={c.title} className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                <div className="text-3xl mb-3">{c.icon}</div>
+                <h3 className="font-bold text-white mb-2">{c.title}</h3>
+                <p className="text-gray-400 text-sm leading-relaxed">{c.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── How it works ── */}
       <section id="how-it-works" className="py-20 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">Dead simple for your customers</h2>
-            <p className="text-lg text-gray-500 max-w-xl mx-auto">No training needed. No app to download. Just scan and order.</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">Up and running in 30 minutes</h2>
+            <p className="text-lg text-gray-500 max-w-xl mx-auto">No developer. No tech skills. Just follow these steps.</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {buyerSteps.map((s) => (
+            {[
+              { step: '1', title: 'Create your account', desc: 'Register free. Your branded store at yourname.eventifood.com is created instantly.' },
+              { step: '2', title: 'Build your menu', desc: 'Add categories, items, photos, extras and pricing. Your live store updates as you type.' },
+              { step: '3', title: 'Display your QR code', desc: 'Print it, pin it to your van, stick it on packaging, or share the link anywhere.' },
+              { step: '4', title: 'Start trading', desc: 'Orders arrive on your kitchen board. Customers pay on their phones. You focus on the food.' },
+            ].map((s) => (
               <div key={s.step} className="text-center">
                 <div className="w-14 h-14 rounded-2xl bg-brand-600 text-white text-xl font-extrabold flex items-center justify-center mx-auto mb-5 shadow-lg shadow-brand-200">
                   {s.step}
@@ -579,68 +571,12 @@ export default async function LandingPage() {
               </div>
             ))}
           </div>
-          {/* Queue / people waiting illustration */}
-          <div className="mt-12 overflow-hidden rounded-2xl bg-brand-50 border border-brand-100 px-4 pb-0 pt-4">
-            <p className="text-center text-xs font-semibold text-brand-400 uppercase tracking-widest mb-2">Your customers, their phone, your van</p>
-            <QueueSilhouetteSVG className="w-full text-brand-600 max-h-36" />
-          </div>
         </div>
       </section>
 
-      {/* Order management / kitchen board callout */}
-      <section className="py-16 bg-gray-950 text-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center gap-12">
-          {/* Mock kitchen board */}
-          <div className="flex-1 max-w-md">
-            <div className="bg-gray-900 rounded-2xl border border-gray-700 overflow-hidden shadow-2xl">
-              <div className="bg-brand-700 px-4 py-3 flex items-center justify-between">
-                <span className="font-bold text-white text-sm">Kitchen Board — Live Orders</span>
-                <span className="text-xs text-brand-200 animate-pulse">● 3 active</span>
-              </div>
-              <div className="p-4 space-y-3">
-                {[
-                  { id: '#1042', items: ['Smash Burger ×2', 'Loaded Fries ×1'], status: 'Preparing', color: 'bg-gold-500' },
-                  { id: '#1043', items: ['Chicken Wrap ×1', 'Shake ×2'], status: 'New', color: 'bg-green-500' },
-                  { id: '#1044', items: ['Veggie Burger ×1'], status: 'Ready', color: 'bg-brand-500' },
-                ].map((order) => (
-                  <div key={order.id} className="bg-gray-800 rounded-xl p-3 flex items-center gap-3">
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-400 mb-1">{order.id}</p>
-                      {order.items.map((i) => <p key={i} className="text-sm text-white">{i}</p>)}
-                    </div>
-                    <span className={`${order.color} text-white text-xs font-bold px-2.5 py-1 rounded-full`}>{order.status}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="flex-1">
-            <span className="inline-block bg-brand-600 text-white text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide mb-4">Live Kitchen Board</span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold mb-4">Never miss an order at peak service</h2>
-            <p className="text-gray-400 mb-6 leading-relaxed">
-              Every order pings straight to your kitchen display the moment a customer pays. Tap once to mark it preparing. Tap again to mark it ready — the customer sees it update live on their phone.
-            </p>
-            <ul className="space-y-3 text-sm text-gray-300">
-              {[
-                'Real-time order stream — no refreshing needed',
-                'One-tap status updates: New → Preparing → Ready',
-                'Customers notified the instant their order is ready',
-                'Works on any tablet, phone or laptop screen',
-              ].map((t) => (
-                <li key={t} className="flex items-start gap-2">
-                  <span className="text-gold-400 font-bold mt-0.5">✓</span> {t}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-20 bg-brand-50 relative overflow-hidden">
-        {/* Festival stage background illustration */}
-        <FestivalStageSVG className="absolute bottom-0 left-0 right-0 w-full text-brand-400 pointer-events-none opacity-60" />
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 relative">
+      {/* ── Testimonials ── */}
+      <section className="py-20 bg-brand-50 border-y border-brand-100">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-center text-gray-900 mb-12">What sellers are saying</h2>
           <div className="grid md:grid-cols-3 gap-6">
             {testimonials.map((t) => (
@@ -657,49 +593,53 @@ export default async function LandingPage() {
             ))}
           </div>
         </div>
-        {/* Crowd silhouette at bottom of testimonials */}
-        <CrowdSilhouetteSVG className="w-full text-brand-500 mt-8 pointer-events-none" />
       </section>
 
-      {/* Why us — full grid */}
+      {/* ── 12 reasons ── */}
       <section className="py-20 bg-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-center text-gray-900 mb-12">8 reasons food vans choose Eventifood</h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-3">12 reasons food vans choose Eventifood</h2>
+            <p className="text-gray-500">Everything built for the reality of trading at markets, festivals and events.</p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {whyUs.map((item) => (
-              <div key={item.text} className="flex items-start gap-3 p-4 rounded-xl bg-gray-50 border border-gray-100">
-                <span className="text-2xl flex-shrink-0">{item.icon}</span>
-                <span className="text-sm text-gray-700 font-medium">{item.text}</span>
+              <div key={item.title} className="flex items-start gap-4 p-5 rounded-xl bg-gray-50 border border-gray-100 hover:border-brand-200 hover:bg-brand-50 transition-all">
+                <span className="text-2xl flex-shrink-0 mt-0.5">{item.icon}</span>
+                <div>
+                  <p className="font-bold text-gray-900 text-sm mb-1">{item.title}</p>
+                  <p className="text-gray-500 text-xs leading-relaxed">{item.desc}</p>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Pricing */}
+      {/* ── Pricing ── */}
       <section id="pricing" className="py-20 bg-gradient-to-b from-brand-50 to-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">Simple, honest pricing</h2>
-            <p className="text-lg text-gray-500">Start free. Scale when you need to. No hidden fees.</p>
+            <p className="text-lg text-gray-500 max-w-xl mx-auto">Start free on PAYG. Upgrade when you need the extra tools. No hidden fees, no monthly bill when you're not trading.</p>
           </div>
           <PricingSection plans={plans} />
+          <div className="mt-10 bg-brand-700 rounded-2xl p-8 text-white text-center">
+            <p className="font-extrabold text-xl mb-2">Trading seasonally? Pay nothing in the off-season.</p>
+            <p className="text-brand-200 text-sm max-w-xl mx-auto">On the PAYG plan you only pay when orders come through — 2% per transaction. Park the van in November, come back in April. Your store, your menu, and your full order history are exactly where you left them. You paid nothing while you were away.</p>
+          </div>
         </div>
       </section>
 
-      {/* Final CTA */}
+      {/* ── Final CTA ── */}
       <section className="py-24 bg-brand-700 text-white text-center relative overflow-hidden">
-        {/* Bunting decoration */}
         <BuntingSVG className="absolute top-0 left-0 right-0 w-full text-gold-400 pointer-events-none" />
-        {/* Van decal bottom-left */}
         <FoodTruckSVG className="absolute -bottom-4 -left-8 w-64 text-white opacity-10 pointer-events-none hidden md:block" />
-        {/* Music notes top-right */}
-        <MusicNotesSVG className="absolute top-8 right-8 w-36 text-white pointer-events-none hidden md:block" />
         <div className="max-w-2xl mx-auto px-4 sm:px-6 relative">
           <Image src="/logo.png" alt="Eventifood" width={320} height={112} className="h-28 w-auto mx-auto mb-8 brightness-0 invert" />
-          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">Ready to open your store?</h2>
+          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">Ready to serve more customers — with less stress?</h2>
           <p className="text-brand-200 text-lg mb-10">
-            Join food van owners already using Eventifood. Set up is free, takes 30 minutes, and your QR-code store is live today.
+            Set up is free. Takes 30 minutes. Your QR-code store is live today — and your first order could arrive before the end of the day.
           </p>
           <Link href="/register" className="inline-block bg-gold-400 hover:bg-gold-500 text-white font-bold text-lg py-4 px-12 rounded-xl shadow-xl hover:shadow-2xl transition-all">
             Open your store free →
@@ -708,13 +648,14 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
+      {/* ── Footer ── */}
       <footer className="bg-gray-950 text-gray-400 py-12">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <Image src="/logo.png" alt="Eventifood" width={240} height={80} className="h-18 w-auto brightness-0 invert opacity-70" />
+            <Image src="/logo.png" alt="Eventifood" width={240} height={80} className="h-16 w-auto brightness-0 invert opacity-70" />
             <div className="flex gap-6 text-sm">
-              <a href="#features" className="hover:text-white transition-colors">Features</a>
+              <a href="#for-sellers" className="hover:text-white transition-colors">For Sellers</a>
+              <a href="#for-customers" className="hover:text-white transition-colors">For Customers</a>
               <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
               <Link href="/login" className="hover:text-white transition-colors">Sign in</Link>
               <Link href="/register" className="hover:text-white transition-colors">Register</Link>
