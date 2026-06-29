@@ -27,6 +27,7 @@ class Tenant(models.Model):
     is_demo = models.BooleanField(default=False)
     trial_expires_at = models.DateField(null=True, blank=True)
     account_number = models.CharField(max_length=20, unique=True, blank=True, default='')
+    show_event_menu_name = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['name']

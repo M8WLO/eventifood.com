@@ -38,6 +38,7 @@ interface Tenant {
   kitchen_nav_items: string[]
   order_number_mode: string
   wait_time_enabled: boolean
+  show_event_menu_name: boolean
 }
 
 
@@ -76,6 +77,9 @@ export default function SettingsPage() {
   const [waitTimeEnabled, setWaitTimeEnabled] = useState(false)
   const [waitTimeSaving, setWaitTimeSaving] = useState(false)
   const [waitTimeSaved, setWaitTimeSaved] = useState(false)
+  const [showEventMenuName, setShowEventMenuName] = useState(false)
+  const [showEventMenuNameSaving, setShowEventMenuNameSaving] = useState(false)
+  const [showEventMenuNameSaved, setShowEventMenuNameSaved] = useState(false)
   const [eventShareMode, setEventShareMode] = useLocalStorage('eventifood_event_mode', 'false')
   const [eventSharePct, setEventSharePct] = useLocalStorage('eventifood_event_pct', '100')
   const [logoFile, setLogoFile] = useState<File | null>(null)
@@ -94,6 +98,7 @@ export default function SettingsPage() {
       setKitchenNav(r.data.kitchen_nav_items || [])
       setOrderMode(r.data.order_number_mode || 'daily')
       setWaitTimeEnabled(!!r.data.wait_time_enabled)
+      setShowEventMenuName(!!r.data.show_event_menu_name)
     })
     api.get('/api/subscriptions/my-plan/')
       .then((r) => {
@@ -147,6 +152,17 @@ export default function SettingsPage() {
       setTimeout(() => setWaitTimeSaved(false), 3000)
     } finally {
       setWaitTimeSaving(false)
+    }
+  }
+
+  const saveShowEventMenuName = async () => {
+    setShowEventMenuNameSaving(true)
+    try {
+      await api.patch('/api/tenants/me/', { show_event_menu_name: showEventMenuName })
+      setShowEventMenuNameSaved(true)
+      setTimeout(() => setShowEventMenuNameSaved(false), 3000)
+    } finally {
+      setShowEventMenuNameSaving(false)
     }
   }
 
@@ -407,6 +423,36 @@ export default function SettingsPage() {
         )}
         <button onClick={saveWaitTime} disabled={waitTimeSaving} className="btn-primary text-sm">
           {waitTimeSaving ? 'Saving…' : waitTimeSaved ? 'Saved ✓' : 'Save wait time setting'}
+        </button>
+      </div>
+
+      {/* Event menu name banner */}
+      <div className="card space-y-4">
+        <h2 className="font-semibold text-gray-700 flex items-center gap-1.5">
+          Show event menu name
+          <Tooltip text="When enabled, customers see a banner on your ordering page showing the name of the currently active event menu. Off by default." />
+        </h2>
+        <p className="text-sm text-gray-500">
+          When enabled, customers see a coloured banner at the top of your ordering page
+          displaying the name of your currently active event menu.
+        </p>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <div className="relative">
+            <input
+              type="checkbox"
+              className="sr-only"
+              checked={showEventMenuName}
+              onChange={(e) => setShowEventMenuName(e.target.checked)}
+            />
+            <div className={`w-11 h-6 rounded-full transition-colors ${showEventMenuName ? 'bg-brand-600' : 'bg-gray-200'}`} />
+            <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${showEventMenuName ? 'translate-x-5' : 'translate-x-0'}`} />
+          </div>
+          <span className="text-sm font-medium text-gray-800">
+            {showEventMenuName ? 'Enabled — customers see the event menu name banner' : 'Disabled'}
+          </span>
+        </label>
+        <button onClick={saveShowEventMenuName} disabled={showEventMenuNameSaving} className="btn-primary text-sm">
+          {showEventMenuNameSaving ? 'Saving…' : showEventMenuNameSaved ? 'Saved ✓' : 'Save setting'}
         </button>
       </div>
 

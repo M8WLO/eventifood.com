@@ -8,7 +8,8 @@ class TenantSerializer(serializers.ModelSerializer):
         model = Tenant
         fields = ['id', 'slug', 'name', 'banner', 'theme', 'is_active', 'created_at',
                   'qr_code_svg', 'kitchen_nav_items', 'order_number_mode', 'payment_mode',
-                  'wait_time_enabled', 'is_demo', 'trial_expires_at', 'account_number']
+                  'wait_time_enabled', 'is_demo', 'trial_expires_at', 'account_number',
+                  'show_event_menu_name']
         read_only_fields = ['id', 'created_at', 'qr_code_svg']
 
 
@@ -25,6 +26,7 @@ class TenantPublicSerializer(serializers.ModelSerializer):
             'name', 'banner', 'theme', 'payment_mode',
             'wait_time_enabled', 'estimated_wait_minutes',
             'active_event', 'is_demo', 'trial_expired', 'paypal_available',
+            'show_event_menu_name',
         ]
 
     def get_trial_expired(self, obj):

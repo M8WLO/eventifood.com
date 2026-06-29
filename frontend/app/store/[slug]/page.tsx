@@ -89,6 +89,7 @@ function StorefrontContent() {
   const [waitTimeEnabled, setWaitTimeEnabled] = useState(false)
   const [estimatedWait, setEstimatedWait] = useState<number | null>(null)
   const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null)
+  const [showEventMenuName, setShowEventMenuName] = useState(false)
   const [isDemo, setIsDemo] = useState(false)
   const [trialExpired, setTrialExpired] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
@@ -107,6 +108,7 @@ function StorefrontContent() {
       setWaitTimeEnabled(!!tenantRes.data.wait_time_enabled)
       setEstimatedWait(tenantRes.data.estimated_wait_minutes ?? null)
       setActiveEvent(tenantRes.data.active_event || null)
+      setShowEventMenuName(!!tenantRes.data.show_event_menu_name)
       setTrialExpired(!!tenantRes.data.trial_expired)
       const demo = !!tenantRes.data.is_demo
       setIsDemo(demo)
@@ -370,7 +372,7 @@ function StorefrontContent() {
       )}
 
       {/* Active event banner */}
-      {activeEvent && (
+      {activeEvent && showEventMenuName && (
         <div className="max-w-lg mx-auto px-4 pt-4">
           <div
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-white text-sm font-medium"
