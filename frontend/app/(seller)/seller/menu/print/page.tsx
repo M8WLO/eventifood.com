@@ -22,6 +22,7 @@ export default function PrintMenusPage() {
   const [menus, setMenus] = useState<PrintMenu[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [globalExtras, setGlobalExtras] = useState<GlobalExtra[]>([])
+  const [slug, setSlug] = useState<string>('')
   const [designing, setDesigning] = useState<PrintMenu | null>(null)
   const [draftName, setDraftName] = useState('')
   const [draftSize, setDraftSize] = useState<'a4' | 'a3' | 'a2'>('a4')
@@ -33,6 +34,7 @@ export default function PrintMenusPage() {
     api.get('/api/catalog/print-menus/').then((r) => setMenus(r.data)).catch(() => {})
     api.get('/api/catalog/categories/').then((r) => setCategories(r.data)).catch(() => {})
     api.get('/api/catalog/global-extras/').then((r) => setGlobalExtras(r.data)).catch(() => {})
+    api.get('/api/tenants/me/').then((r) => setSlug(r.data.slug)).catch(() => {})
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -287,10 +289,15 @@ export default function PrintMenusPage() {
                     <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${m.is_web_facing ? 'translate-x-4' : 'translate-x-0'}`} />
                   </div>
                 </label>
-                {m.is_default && m.is_web_facing && (
-                  <span className="text-xs text-gray-400">
-                    Live at <span className="font-mono">…/menu</span>
-                  </span>
+                {m.is_default && m.is_web_facing && slug && (
+                  <a
+                    href={`https://${slug}.eventifood.com/menu`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-mono text-brand-600 hover:underline"
+                  >
+                    {slug}.eventifood.com/menu
+                  </a>
                 )}
               </div>
             </div>
