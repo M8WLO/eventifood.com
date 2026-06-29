@@ -276,6 +276,24 @@ class TenantCopyView(APIView):
         stats = {'categories': 0, 'products': 0, 'variations': 0, 'global_extras': 0, 'orders': 0}
 
         with transaction.atomic():
+            # --- Subscription + Plan ---
+            from subscriptions.models import Subscription, TenantPlan
+            try:
+                src_sub = src.subscription
+                dst_sub, _ = Subscription.objects.get_or_create(tenant=dst, defaults={'status': 'trialing'})
+                dst_sub.plan = src_sub.plan
+                dst_sub.plan_tier = src_sub.plan_tier
+                dst_sub.status = src_sub.status
+                dst_sub.annual_cost = src_sub.annual_cost
+                dst_sub.started_at = src_sub.started_at
+                dst_sub.next_billing_date = src_sub.next_billing_date
+                dst_sub.save()
+                if src_sub.plan_tier:
+                    dst_tp, _ = TenantPlan.objects.get_or_create(tenant=dst)
+                    dst_tp.set_plan(src_sub.plan_tier, user=request.user)
+            except Subscription.DoesNotExist:
+                pass
+
             # --- Settings ---
             dst.theme = src.theme
             dst.order_number_mode = src.order_number_mode

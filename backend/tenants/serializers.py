@@ -34,7 +34,14 @@ class TenantPublicSerializer(serializers.ModelSerializer):
 
     def get_paypal_available(self, obj):
         if obj.payment_mode == 'payg':
-            return False
+            # Allow demo stores and sandbox mode to test PayPal
+            try:
+                from accounts.models import PlatformConfig
+                sandbox = PlatformConfig.get().sandbox_mode
+            except Exception:
+                sandbox = False
+            if not (obj.is_demo or sandbox):
+                return False
         try:
             return bool(obj.payment_provider.paypal_onboarding_complete and obj.payment_provider.paypal_merchant_id)
         except Exception:

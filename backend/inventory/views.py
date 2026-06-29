@@ -100,6 +100,45 @@ class StockTodayView(APIView):
         return Response(result)
 
 
+class StockLastBeforeView(APIView):
+    """Returns the most recent date before `date` that has any non-null starting_qty,
+    plus all product quantities for that date. Used to pre-fill a new day from the last recorded session."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        tenant = request.tenant
+        if not tenant:
+            return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
+        date_param = request.query_params.get('date')
+        if not date_param:
+            return Response({'detail': 'date parameter required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            ref_date = datetime.date.fromisoformat(date_param)
+        except ValueError:
+            return Response({'detail': 'Invalid date. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        last = (
+            StockRecord.objects
+            .filter(product__category__tenant=tenant, date__lt=ref_date, starting_qty__isnull=False)
+            .order_by('-date')
+            .values('date')
+            .first()
+        )
+        if not last:
+            return Response({'date': None, 'records': []})
+
+        last_date = last['date']
+        records = (
+            StockRecord.objects
+            .filter(product__category__tenant=tenant, date=last_date, starting_qty__isnull=False)
+            .select_related('product')
+        )
+        return Response({
+            'date': str(last_date),
+            'records': [{'product': r.product_id, 'starting_qty': r.starting_qty} for r in records],
+        })
+
+
 class WastageReportView(APIView):
     permission_classes = [IsAuthenticated]
 

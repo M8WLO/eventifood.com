@@ -9,20 +9,44 @@ interface Stats {
   total_revenue: string
 }
 
+interface Tenant {
+  name: string
+  slug: string
+  banner: string | null
+}
+
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null)
+  const [tenant, setTenant] = useState<Tenant | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.get('/api/orders/seller/report/?period=today')
-      .then((r) => setStats(r.data))
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    Promise.all([
+      api.get('/api/orders/seller/report/?period=today').catch(() => null),
+      api.get('/api/tenants/me/').catch(() => null),
+    ]).then(([statsRes, tenantRes]) => {
+      if (statsRes) setStats(statsRes.data)
+      if (tenantRes) setTenant(tenantRes.data)
+    }).finally(() => setLoading(false))
   }, [])
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h1>
+      {/* Store identity */}
+      <div className="flex items-center gap-4 mb-6">
+        {tenant?.banner ? (
+          <img
+            src={tenant.banner}
+            alt={tenant.name}
+            className="h-14 w-auto max-w-[200px] object-contain rounded-lg"
+          />
+        ) : (
+          <h1 className="text-2xl font-bold text-gray-900">{tenant?.name ?? 'Dashboard'}</h1>
+        )}
+        {tenant?.banner && (
+          <span className="text-xl font-bold text-gray-700">{tenant.name}</span>
+        )}
+      </div>
 
       {/* Today's stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">

@@ -8,7 +8,7 @@ from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, BasePermission
 
 from .models import TenantPaymentProvider
 from .serializers import PaymentProviderSerializer
@@ -91,7 +91,14 @@ class AlternativeProviderView(APIView):
         if not tenant:
             return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
         if tenant.payment_mode == 'payg':
-            return Response({'detail': 'Alternative providers are not available on Pay As You Go.'}, status=status.HTTP_403_FORBIDDEN)
+            # Allow demo stores and sandbox mode to configure providers for testing
+            try:
+                from accounts.models import PlatformConfig
+                sandbox = PlatformConfig.get().sandbox_mode
+            except Exception:
+                sandbox = False
+            if not (tenant.is_demo or sandbox):
+                return Response({'detail': 'Alternative providers are not available on Pay As You Go.'}, status=status.HTTP_403_FORBIDDEN)
         provider, _ = TenantPaymentProvider.objects.get_or_create(tenant=tenant)
         data = request.data
         updated = []
@@ -169,6 +176,34 @@ class StripeConnectInitView(APIView):
         return Response({'url': link.url})
 
 
+class StripeConnectSyncView(APIView):
+    """Poll Stripe API to check charges_enabled and update our DB. Handles the case where
+    the webhook hasn't arrived yet (e.g. no Stripe CLI in test/local environments)."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        tenant = request.tenant
+        if not tenant:
+            return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            provider = tenant.payment_provider
+        except TenantPaymentProvider.DoesNotExist:
+            return Response({'stripe_onboarding_complete': False})
+        if not provider.stripe_account_id:
+            return Response({'stripe_onboarding_complete': False})
+        try:
+            s = _stripe_client()
+            account = s.Account.retrieve(provider.stripe_account_id)
+            charges_enabled = account.get('charges_enabled', False)
+            if charges_enabled and not provider.stripe_onboarding_complete:
+                provider.stripe_onboarding_complete = True
+                provider.connected_at = provider.connected_at or timezone.now()
+                provider.save()
+            return Response({'stripe_onboarding_complete': provider.stripe_onboarding_complete})
+        except stripe.error.StripeError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
 class StripeConnectDisconnectView(APIView):
     """Disconnect Stripe account from this tenant."""
     permission_classes = [IsAuthenticated]
@@ -186,6 +221,54 @@ class StripeConnectDisconnectView(APIView):
         except TenantPaymentProvider.DoesNotExist:
             pass
         return Response({'detail': 'Disconnected.'})
+
+
+class _IsSuperAdmin(BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and getattr(request.user, 'is_superadmin', False))
+
+
+class StripeAdminResetView(APIView):
+    """Superadmin: clear a tenant's Stripe Connect link so they can reconnect from scratch."""
+    permission_classes = [_IsSuperAdmin]
+
+    def post(self, request, slug):
+        from tenants.models import Tenant
+        try:
+            tenant = Tenant.objects.get(slug=slug)
+        except Tenant.DoesNotExist:
+            return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            provider = tenant.payment_provider
+            old_id = provider.stripe_account_id
+            provider.stripe_account_id = ''
+            provider.stripe_onboarding_complete = False
+            provider.connected_at = None
+            provider.save()
+            return Response({'detail': f'Stripe Connect reset. Cleared account: {old_id or "(none)"}'})
+        except TenantPaymentProvider.DoesNotExist:
+            return Response({'detail': 'No payment provider record for this tenant.'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class StripeAdminStatusView(APIView):
+    """Superadmin: fetch current Stripe Connect status for a tenant."""
+    permission_classes = [_IsSuperAdmin]
+
+    def get(self, request, slug):
+        from tenants.models import Tenant
+        try:
+            tenant = Tenant.objects.get(slug=slug)
+        except Tenant.DoesNotExist:
+            return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            provider = tenant.payment_provider
+            return Response({
+                'stripe_account_id': provider.stripe_account_id,
+                'stripe_onboarding_complete': provider.stripe_onboarding_complete,
+                'connected_at': provider.connected_at,
+            })
+        except TenantPaymentProvider.DoesNotExist:
+            return Response({'stripe_account_id': '', 'stripe_onboarding_complete': False, 'connected_at': None})
 
 
 class CreateCheckoutSessionView(APIView):

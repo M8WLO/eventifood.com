@@ -82,22 +82,28 @@ class LoginView(APIView):
             return Response({'detail': 'Account is disabled.'}, status=status.HTTP_403_FORBIDDEN)
 
         if PlatformConfig.get().mfa_required and user.mfa_enabled:
-            code = generate_otp_code()
-            EmailOTP.objects.create(
-                user=user,
-                code=code,
-                expires_at=timezone.now() + timedelta(minutes=10),
-            )
-            sent = send_otp_email(user, code)
-            if not sent:
-                return Response(
-                    {'detail': 'Could not send login code — email service unavailable. Please try again shortly.'},
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            from accounts.models import TenantMembership
+            membership = TenantMembership.objects.filter(user=user).select_related('tenant').first()
+            is_demo = bool(membership and membership.tenant.is_demo)
+
+            if not is_demo:
+                code = generate_otp_code()
+                EmailOTP.objects.create(
+                    user=user,
+                    code=code,
+                    expires_at=timezone.now() + timedelta(minutes=10),
                 )
+                sent = send_otp_email(user, code)
+                if not sent:
+                    return Response(
+                        {'detail': 'Could not send login code — email service unavailable. Please try again shortly.'},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    )
             partial_token = make_partial_token(user.id)
             return Response({
                 'mfa_required': True,
                 'partial_token': partial_token,
+                'is_demo': is_demo,
             }, status=status.HTTP_200_OK)
 
         refresh = RefreshToken.for_user(user)
@@ -128,13 +134,21 @@ class VerifyOTPView(APIView):
             return Response({'detail': 'User not found.'}, status=status.HTTP_400_BAD_REQUEST)
 
         code = serializer.validated_data['code']
-        otp = EmailOTP.objects.filter(user=user, code=code, is_used=False).order_by('-created_at').first()
 
-        if not otp or not otp.is_valid:
-            return Response({'detail': 'Invalid or expired OTP.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Demo mode: accept 000000 only if the tenant is flagged is_demo in the DB.
+        # This is determined server-side — no client-supplied parameter is trusted.
+        from accounts.models import TenantMembership
+        membership = TenantMembership.objects.filter(user=user).select_related('tenant').first()
+        is_demo = bool(membership and membership.tenant.is_demo)
 
-        otp.is_used = True
-        otp.save()
+        if is_demo and code == '000000':
+            pass  # accepted — skip OTP DB check
+        else:
+            otp = EmailOTP.objects.filter(user=user, code=code, is_used=False).order_by('-created_at').first()
+            if not otp or not otp.is_valid:
+                return Response({'detail': 'Invalid or expired OTP.'}, status=status.HTTP_400_BAD_REQUEST)
+            otp.is_used = True
+            otp.save()
 
         refresh = RefreshToken.for_user(user)
         refresh['email'] = user.email

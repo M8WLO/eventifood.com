@@ -64,6 +64,14 @@ export default function BasketPage() {
     setPaypalAvailable(sessionStorage.getItem(`ef_paypal_${slug}`) === '1')
   }, [slug])
 
+  useEffect(() => {
+    if (basket.length > 0) {
+      sessionStorage.setItem('basket', JSON.stringify(basket))
+    } else {
+      sessionStorage.removeItem('basket')
+    }
+  }, [basket])
+
   const colors = THEME_COLORS[theme] || THEME_COLORS.default
 
   const updateQty = (idx: number, qty: number) => {
@@ -335,8 +343,8 @@ export default function BasketPage() {
                   : `Pay by card · £${total.toFixed(2)}`}
               </button>
 
-              {/* PayPal button — only for subscription tenants with PayPal configured */}
-              {!isDemo && paypalAvailable && (
+              {/* PayPal button — shown whenever the store has PayPal configured */}
+              {paypalAvailable && (
                 <button
                   type="button"
                   onClick={placeOrderPayPal}

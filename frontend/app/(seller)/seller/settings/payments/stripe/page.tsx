@@ -16,6 +16,7 @@ export default function StripeSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState('')
 
   const load = () => {
@@ -35,6 +36,23 @@ export default function StripeSettingsPage() {
     } catch {
       setError('Could not initiate Stripe connection. Please try again.')
       setConnecting(false)
+    }
+  }
+
+  const handleSync = async () => {
+    setSyncing(true)
+    setError('')
+    try {
+      const r = await api.post('/api/payments/connect/sync/')
+      if (r.data.stripe_onboarding_complete) {
+        load()
+      } else {
+        setError('Stripe account not fully activated yet. If you just completed setup, wait a minute and try again.')
+      }
+    } catch {
+      setError('Could not check Stripe status. Please try again.')
+    } finally {
+      setSyncing(false)
     }
   }
 
@@ -104,15 +122,24 @@ export default function StripeSettingsPage() {
             </div>
             <div>
               <p className="font-semibold text-gray-900">Stripe setup incomplete</p>
-              <p className="text-xs text-gray-400">You started onboarding but haven&apos;t finished. Complete setup to accept payments.</p>
+              <p className="text-xs text-gray-400">
+                If you already confirmed on Stripe&apos;s site, click &ldquo;Check status&rdquo; — activation sometimes takes a minute to reach us.
+              </p>
             </div>
           </div>
           <button
-            onClick={handleConnect}
-            disabled={connecting}
+            onClick={handleSync}
+            disabled={syncing}
             className="btn-primary w-full"
           >
-            {connecting ? 'Redirecting to Stripe…' : 'Continue Stripe setup →'}
+            {syncing ? 'Checking with Stripe…' : 'Check status →'}
+          </button>
+          <button
+            onClick={handleConnect}
+            disabled={connecting}
+            className="btn-secondary w-full"
+          >
+            {connecting ? 'Redirecting to Stripe…' : 'Continue / redo Stripe setup'}
           </button>
           <button
             onClick={handleDisconnect}

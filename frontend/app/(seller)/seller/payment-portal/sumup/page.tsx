@@ -15,6 +15,7 @@ export default function SumUpConfigPage() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showKey, setShowKey] = useState(false)
 
   useEffect(() => {
     api.get('/api/payments/providers/')
@@ -63,7 +64,7 @@ export default function SumUpConfigPage() {
   return (
     <div className="p-8 max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-3 mb-2">
-        <Link href="/seller/payment-portal" className="text-sm text-gray-400 hover:text-gray-600">← Payment Portal</Link>
+        <Link href="/seller/payments" className="text-sm text-gray-400 hover:text-gray-600">← Payments</Link>
       </div>
 
       <div className="flex items-center gap-4">
@@ -83,14 +84,24 @@ export default function SumUpConfigPage() {
       <SetupGuide
         time="~10 minutes"
         steps={[
-          { text: 'Go to developer.sumup.com and sign in to your SumUp Business account.' },
-          { text: 'Navigate to API Keys and create a new key.', note: 'The key starts with sup_sk_ — copy it immediately, it\'s only shown once.' },
-          { text: 'Paste the key into the "SumUp API key" field below and save.' },
-          { text: 'Find your Merchant Code in the SumUp mobile app: tap Account → Profile.', note: 'It looks like MXXXXXXX — a capital M followed by 7 digits.' },
-          { text: 'Enter the merchant code, toggle Enabled, and click Save.' },
+          {
+            text: 'Log in to the SumUp Developer Portal at me.sumup.com.',
+            note: 'Use the same email and password as your SumUp Business account. Once logged in, click Settings in the left-hand menu, then Developer Settings.',
+          },
+          {
+            text: 'Go to API Keys at me.sumup.com/en-gb/settings/api-keys and click "Create API key".',
+            note: 'Your Merchant Account ID (e.g. MJ3ATXY8) is shown in the top-left corner next to your business name — you\'ll need this below.',
+          },
+          {
+            text: 'Give the key a name (e.g. "eventifood.co.uk") and copy it immediately.',
+            note: 'The key starts with sup_sk_ and is only shown once. If you miss it, delete and create a new one.',
+          },
+          {
+            text: 'Paste the API key and your Merchant Account ID into the fields below, toggle Enabled, and click Save.',
+          },
         ]}
         notes={[
-          'You need a SumUp Business account — a personal account will not have API access.',
+          'You need a SumUp Business account — a personal account will not have Developer Settings or API access.',
           'SumUp charges their own transaction fee (typically 1.69% for online payments) on top of the order total.',
         ]}
       />
@@ -101,30 +112,58 @@ export default function SumUpConfigPage() {
             SumUp API key {hasKey && <span className="text-green-600 font-normal text-xs ml-1">● Key saved</span>}
             <Tooltip text="Your secret API key from the SumUp Developer Portal. Starts with sup_sk_. This is stored securely and never shown again after saving." />
           </label>
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            className="input-field font-mono text-sm"
-            placeholder={hasKey ? 'Enter new key to replace the saved one' : 'sup_sk_…'}
-          />
+          <div className="relative">
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(e) => { setApiKey(e.target.value); setShowKey(false) }}
+              className="input-field font-mono text-sm pr-10"
+              placeholder={hasKey ? 'Enter new key to replace the saved one' : 'sup_sk_…'}
+            />
+            {apiKey && (
+              <button
+                type="button"
+                onClick={() => setShowKey((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                title={showKey ? 'Hide key' : 'Preview key'}
+              >
+                {showKey ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )}
+              </button>
+            )}
+          </div>
+          {showKey && apiKey && (
+            <p className="mt-1.5 font-mono text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 tracking-wide">
+              {apiKey.length <= 8
+                ? '•'.repeat(apiKey.length)
+                : `${apiKey.slice(0, 4)}${'•'.repeat(apiKey.length - 8)}${apiKey.slice(-4)}`}
+            </p>
+          )}
           <p className="text-xs text-gray-400 mt-1">
-            Find your API key in the SumUp Developer Portal under API Keys.
+            Generate your API key at <a href="https://me.sumup.com/en-gb/settings/api-keys" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">me.sumup.com → Settings → Developer Settings → API Keys</a>.
           </p>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
-            Merchant code
-            <Tooltip text="Your unique SumUp merchant identifier. Find it in the SumUp app under Account → Profile. Looks like MXXXXXXX." />
+            Merchant Account ID
+            <Tooltip text="Your unique SumUp merchant identifier. Shown in the top-left corner of me.sumup.com next to your business name — e.g. MJ3ATXY8." />
           </label>
           <input
             value={merchantCode}
             onChange={(e) => setMerchantCode(e.target.value)}
             className="input-field"
-            placeholder="e.g. MXXXXXXX"
+            placeholder="e.g. MJ3ATXY8"
           />
-          <p className="text-xs text-gray-400 mt-1">Visible in the SumUp app: Account → Profile.</p>
+          <p className="text-xs text-gray-400 mt-1">Shown in the top-left corner of <a href="https://me.sumup.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">me.sumup.com</a> next to your business name.</p>
         </div>
 
         <div className="flex items-center gap-3">

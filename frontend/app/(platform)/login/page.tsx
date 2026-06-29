@@ -6,10 +6,26 @@ import Link from 'next/link'
 import api from '@/lib/api'
 import { setToken } from '@/lib/auth'
 
+type LoginMode = 'seller' | 'kitchen' | 'display' | 'menu'
+
+const MODE_OPTIONS: { mode: LoginMode; label: string; desc: string; icon: string }[] = [
+  { mode: 'seller',  label: 'Seller',           desc: 'Full dashboard access',          icon: '🏠' },
+  { mode: 'kitchen', label: 'Kitchen board',     desc: 'Orders & kitchen display',        icon: '🍳' },
+  { mode: 'display', label: 'Customer display',  desc: 'QR code fullscreen screen',       icon: '📺' },
+  { mode: 'menu',    label: 'Menu screen',       desc: 'Menu display for a wall screen',  icon: '🍽️' },
+]
+
+const MODE_DESTINATIONS: Record<LoginMode, string> = {
+  seller:  '/seller/dashboard',
+  kitchen: '/seller/orders/board?kiosk=1',
+  display: '/seller/display',
+  menu:    '/seller/menu-display',
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const [form, setForm] = useState({ email: '', password: '' })
-  const [kitchenMode, setKitchenMode] = useState(false)
+  const [loginMode, setLoginMode] = useState<LoginMode>('seller')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -20,12 +36,13 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const { data } = await api.post('/api/auth/login/', form)
+      const dest = MODE_DESTINATIONS[loginMode]
       if (data.mfa_required) {
-        const dest = kitchenMode ? '/seller/orders/board?kiosk=1' : '/seller/dashboard'
-        router.push(`/verify-otp?token=${encodeURIComponent(data.partial_token)}&redirect=${encodeURIComponent(dest)}`)
+        const demoParam = data.is_demo ? '&demo=1' : ''
+        router.push(`/verify-otp?token=${encodeURIComponent(data.partial_token)}&redirect=${encodeURIComponent(dest)}${demoParam}`)
       } else {
         setToken(data.access, data.refresh)
-        router.push(kitchenMode ? '/seller/orders/board?kiosk=1' : '/seller/dashboard')
+        router.push(dest)
       }
     } catch {
       setError('Invalid email or password.')
@@ -81,25 +98,36 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Kitchen only mode */}
-            <label className="flex items-start gap-3 cursor-pointer pt-1">
-              <input
-                type="checkbox"
-                checked={kitchenMode}
-                onChange={(e) => setKitchenMode(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded text-brand-600"
-              />
-              <div>
-                <span className="text-sm font-medium text-gray-800">Kitchen only mode</span>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Opens directly to the kitchen board. Sidebar access is controlled by your kitchen settings.
-                </p>
+            {/* Mode selector */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Sign in as</label>
+              <div className="grid grid-cols-2 gap-2">
+                {MODE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.mode}
+                    type="button"
+                    onClick={() => setLoginMode(opt.mode)}
+                    className={`flex items-start gap-2 p-2.5 rounded-xl border-2 text-left transition-colors ${
+                      loginMode === opt.mode
+                        ? 'border-brand-500 bg-brand-50'
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                    }`}
+                  >
+                    <span className="text-xl leading-none mt-0.5">{opt.icon}</span>
+                    <div>
+                      <p className={`text-xs font-semibold leading-tight ${loginMode === opt.mode ? 'text-brand-700' : 'text-gray-800'}`}>
+                        {opt.label}
+                      </p>
+                      <p className="text-[10px] text-gray-400 leading-tight mt-0.5">{opt.desc}</p>
+                    </div>
+                  </button>
+                ))}
               </div>
-            </label>
+            </div>
 
             {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
             <button type="submit" disabled={loading} className="btn-primary w-full">
-              {loading ? 'Signing in…' : kitchenMode ? 'Sign in to kitchen' : 'Sign in'}
+              {loading ? 'Signing in…' : `Sign in${loginMode !== 'seller' ? ` — ${MODE_OPTIONS.find(o => o.mode === loginMode)?.label}` : ''}`}
             </button>
           </form>
           <p className="text-center text-sm text-gray-500 mt-4">

@@ -95,6 +95,11 @@ function StorefrontContent() {
   const [scannerOpen, setScannerOpen] = useState(false)
   const qrAutoAdded = useRef(false)
 
+  // Resume state — basket in sessionStorage or active order in localStorage
+  const [resumeBasketCount, setResumeBasketCount] = useState(0)
+  const [activeOrder, setActiveOrder] = useState<{ number: string; status: string } | null>(null)
+  const [resumeDismissed, setResumeDismissed] = useState(false)
+
   useEffect(() => {
     api.defaults.headers.common['X-Tenant-Slug'] = slug
 
@@ -205,8 +210,34 @@ function StorefrontContent() {
   useEffect(() => {
     if (basket.length > 0) {
       sessionStorage.setItem('basket', JSON.stringify(basket))
+      setResumeBasketCount(basket.reduce((s, i) => s + i.quantity, 0))
     }
   }, [basket])
+
+  // Check sessionStorage for a saved basket and localStorage for an active order
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem('basket')
+      if (saved) {
+        const items: BasketItem[] = JSON.parse(saved)
+        const count = items.reduce((s, i) => s + i.quantity, 0)
+        if (count > 0) setResumeBasketCount(count)
+      }
+    } catch { /* ignore parse errors */ }
+
+    try {
+      const orders: string[] = JSON.parse(localStorage.getItem(`ef_orders_${slug}`) || '[]')
+      if (orders.length > 0) {
+        const last = orders[orders.length - 1]
+        api.get(`/api/orders/status/${last}/`).then((r) => {
+          const s = r.data.status
+          if (s && s !== 'collected' && s !== 'cancelled') {
+            setActiveOrder({ number: last, status: s })
+          }
+        }).catch(() => {})
+      }
+    } catch { /* ignore */ }
+  }, [slug])
 
   // Auto-add item from QR code URL params (?add=<product_id>&v=<variation_id>)
   useEffect(() => {
@@ -353,6 +384,79 @@ function StorefrontContent() {
             Scan item
           </button>
         </header>
+      )}
+
+      {/* Resume banner — active order or saved basket */}
+      {!resumeDismissed && (activeOrder || resumeBasketCount > 0) && (
+        <div className="px-4 pt-3 space-y-2">
+          {activeOrder && (
+            <div
+              className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-white text-sm"
+              style={{ backgroundColor: colors.dark }}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-base shrink-0">
+                  {activeOrder.status === 'ready' ? '🔔' : '⏳'}
+                </span>
+                <div className="min-w-0">
+                  <p className="font-semibold truncate">
+                    {activeOrder.status === 'ready'
+                      ? 'Your order is ready for collection!'
+                      : activeOrder.status === 'preparing'
+                      ? 'Your order is being prepared'
+                      : activeOrder.status === 'placed'
+                      ? 'Your order has been received'
+                      : 'Your order is in progress'}
+                  </p>
+                  <p className="text-xs opacity-75">Order #{activeOrder.number}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={`/store/${slug}/order/${activeOrder.number}`}
+                  className="text-xs font-bold bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  Track →
+                </a>
+                <button
+                  onClick={() => setResumeDismissed(true)}
+                  className="text-white/60 hover:text-white/90 text-lg leading-none"
+                  aria-label="Dismiss"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )}
+          {resumeBasketCount > 0 && !activeOrder && (
+            <div
+              className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-white text-sm"
+              style={{ backgroundColor: colors.dark }}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-base shrink-0">🛒</span>
+                <p className="font-semibold">
+                  You have {resumeBasketCount} item{resumeBasketCount !== 1 ? 's' : ''} in your basket
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={`/store/${slug}/basket`}
+                  className="text-xs font-bold bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  Continue →
+                </a>
+                <button
+                  onClick={() => setResumeDismissed(true)}
+                  className="text-white/60 hover:text-white/90 text-lg leading-none"
+                  aria-label="Dismiss"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Live wait time banner */}

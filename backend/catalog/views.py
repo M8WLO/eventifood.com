@@ -292,9 +292,12 @@ class PrintMenuDetailView(APIView):
         serializer = PrintMenuSerializer(obj, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        # Enforce one default per tenant — clear the flag on all others first
+        # Enforce one default per tenant
         if request.data.get('is_default'):
             PrintMenu.objects.filter(tenant=request.tenant, is_default=True).exclude(pk=pk).update(is_default=False)
+        # Enforce one web-facing per tenant
+        if request.data.get('is_web_facing'):
+            PrintMenu.objects.filter(tenant=request.tenant, is_web_facing=True).exclude(pk=pk).update(is_web_facing=False)
         serializer.save()
         return Response(serializer.data)
 
@@ -314,7 +317,7 @@ class PublicMenuView(APIView):
         tenant = request.tenant
         if not tenant:
             return Response({'detail': 'Store not found.'}, status=status.HTTP_404_NOT_FOUND)
-        menu = PrintMenu.objects.filter(tenant=tenant, is_default=True, is_web_facing=True).first()
+        menu = PrintMenu.objects.filter(tenant=tenant, is_web_facing=True).first()
         if not menu:
             return Response({'detail': 'No public menu available.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -436,6 +439,10 @@ class PrintMenuRenderView(APIView):
                         'qr_code_svg': obj.qr_code_svg,
                     })
 
+        if not tenant.qr_code_svg:
+            tenant.generate_qr_code()
+            tenant.save(update_fields=['qr_code_svg'])
+
         return Response({
             'id': menu.pk,
             'name': menu.name,
@@ -443,4 +450,5 @@ class PrintMenuRenderView(APIView):
             'items': resolved,
             'banner': request.build_absolute_uri(tenant.banner.url) if tenant.banner else None,
             'store_name': tenant.name,
+            'store_qr_code_svg': tenant.qr_code_svg,
         })

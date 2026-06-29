@@ -88,6 +88,9 @@ export default function SettingsPage() {
   const [logoUploading, setLogoUploading] = useState(false)
   const [logoSaved, setLogoSaved] = useState(false)
   const logoImgRef = useRef<HTMLImageElement>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [pickerScreens, setPickerScreens] = useState<any[]>([])
+  const [pendingPath, setPendingPath] = useState('')
 
   const hasFlag = (flag: string) => featureFlags.includes(flag)
 
@@ -222,6 +225,32 @@ export default function SettingsPage() {
     setTenant((prev) => prev ? { ...prev, banner: null } : prev)
     setLogoPreviewUrl(null)
     setLogoFile(null)
+  }
+
+  const openDisplayWindow = async (path: string) => {
+    if ('getScreenDetails' in window) {
+      try {
+        const sd = await (window as any).getScreenDetails()
+        if (sd.screens.length > 1) {
+          setPendingPath(path)
+          setPickerScreens(sd.screens)
+          setPickerOpen(true)
+          return
+        }
+      } catch {
+        // permission denied or API unavailable
+      }
+    }
+    window.open(path, '_blank')
+  }
+
+  const openOnScreen = (screen: any) => {
+    window.open(
+      pendingPath,
+      '_blank',
+      `left=${screen.left},top=${screen.top},width=${screen.width},height=${screen.height}`,
+    )
+    setPickerOpen(false)
   }
 
   const downloadSVG = () => {
@@ -524,20 +553,26 @@ export default function SettingsPage() {
               className="w-96 h-96 border border-gray-200 rounded-lg p-3 [&>svg]:w-full [&>svg]:h-full"
               dangerouslySetInnerHTML={{ __html: tenant.qr_code_svg }}
             />
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3 justify-center">
               <button onClick={downloadSVG} className="btn-secondary text-sm">
                 Download SVG
               </button>
               <button
-                onClick={() => window.open('/seller/display', '_blank', 'width=900,height=900')}
+                onClick={() => openDisplayWindow('/seller/display')}
                 className="btn-secondary text-sm"
               >
-                Full-screen display
+                Customer display
+              </button>
+              <button
+                onClick={() => openDisplayWindow('/seller/menu-display')}
+                className="btn-secondary text-sm"
+              >
+                Menu screen
               </button>
             </div>
             <p className="text-xs text-gray-400 text-center">
               Print and display this at your truck so customers can scan to order.<br />
-              Use "Full-screen display" to show the QR on a secondary monitor or tablet.
+              Use "Customer display" or "Menu screen" to open a fullscreen display — if you have multiple monitors, you will be asked which screen to use.
             </p>
           </div>
         ) : (
@@ -608,6 +643,34 @@ export default function SettingsPage() {
           </Link>
         </div>
       </div>
+
+      {/* Monitor picker modal */}
+      {pickerOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">Choose a screen</h3>
+            <p className="text-sm text-gray-500">Select which monitor to open the display on.</p>
+            <div className="space-y-2">
+              {pickerScreens.map((screen, i) => (
+                <button
+                  key={i}
+                  onClick={() => openOnScreen(screen)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 hover:border-brand-400 hover:bg-brand-50 transition-colors text-left"
+                >
+                  <span className="font-medium text-gray-800">
+                    {screen.label || `Screen ${i + 1}`}
+                    {screen.isPrimary && <span className="ml-2 text-xs text-gray-400">(Primary)</span>}
+                  </span>
+                  <span className="text-sm text-gray-400">{screen.width}×{screen.height}</span>
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setPickerOpen(false)} className="w-full text-sm text-gray-400 hover:text-gray-600">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

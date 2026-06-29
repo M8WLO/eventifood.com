@@ -97,8 +97,17 @@ export default function PrintMenusPage() {
   }
 
   const toggleWebFacing = async (m: PrintMenu) => {
-    const { data } = await api.patch(`/api/catalog/print-menus/${m.id}/`, { is_web_facing: !m.is_web_facing })
-    setMenus((prev) => prev.map((x) => x.id === m.id ? data : x))
+    const turningOn = !m.is_web_facing
+    // Optimistic update: flip this menu and clear all others if turning on
+    setMenus((prev) => prev.map((x) =>
+      x.id === m.id ? { ...x, is_web_facing: turningOn } : turningOn ? { ...x, is_web_facing: false } : x
+    ))
+    try {
+      const { data } = await api.patch(`/api/catalog/print-menus/${m.id}/`, { is_web_facing: turningOn })
+      setMenus((prev) => prev.map((x) => x.id === data.id ? data : x))
+    } catch {
+      load() // revert on error
+    }
   }
 
   if (designing !== null) {
@@ -267,36 +276,38 @@ export default function PrintMenusPage() {
                   </button>
                 </div>
               </div>
-              <div className="flex items-center gap-3 pt-1 border-t border-gray-100">
-                {!m.is_default && (
-                  <button
-                    onClick={() => setDefault(m.id)}
-                    className="text-xs font-medium text-brand-600 hover:text-brand-800 transition-colors"
-                  >
-                    Set as default
-                  </button>
-                )}
-                <label className="flex items-center gap-2 cursor-pointer ml-auto">
-                  <span className="text-xs text-gray-500">Web facing</span>
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      className="sr-only"
-                      checked={m.is_web_facing}
-                      onChange={() => toggleWebFacing(m)}
-                    />
-                    <div className={`w-8 h-4 rounded-full transition-colors ${m.is_web_facing ? 'bg-green-500' : 'bg-gray-200'}`} />
-                    <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${m.is_web_facing ? 'translate-x-4' : 'translate-x-0'}`} />
-                  </div>
-                </label>
-                {m.is_default && m.is_web_facing && slug && (
+              <div className="flex flex-col gap-2 pt-1 border-t border-gray-100">
+                <div className="flex items-center gap-3">
+                  {!m.is_default && (
+                    <button
+                      onClick={() => setDefault(m.id)}
+                      className="text-xs font-medium text-brand-600 hover:text-brand-800 transition-colors"
+                    >
+                      Set as default
+                    </button>
+                  )}
+                  <label className="flex items-center gap-2 cursor-pointer ml-auto">
+                    <span className="text-xs text-gray-500">Web facing</span>
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={m.is_web_facing}
+                        onChange={() => toggleWebFacing(m)}
+                      />
+                      <div className={`w-8 h-4 rounded-full transition-colors ${m.is_web_facing ? 'bg-green-500' : 'bg-gray-200'}`} />
+                      <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${m.is_web_facing ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </div>
+                  </label>
+                </div>
+                {m.is_web_facing && slug && (
                   <a
                     href={`https://${slug}.eventifood.com/menu`}
                     target="_blank"
                     rel="noreferrer"
                     className="text-xs font-mono text-brand-600 hover:underline"
                   >
-                    {slug}.eventifood.com/menu
+                    Live at: {slug}.eventifood.com/menu
                   </a>
                 )}
               </div>

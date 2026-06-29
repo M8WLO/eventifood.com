@@ -11,6 +11,7 @@ interface MenuItem {
 interface MenuData {
   id: number; name: string; size: string
   items: MenuItem[]; banner: string | null; store_name: string
+  store_qr_code_svg: string | null
 }
 
 // A4 dimensions in mm
@@ -193,9 +194,23 @@ export default function PrintMenuPage() {
           <div className="text-right">
             <p className="text-white/60 text-xs uppercase tracking-widest mb-0.5">Menu</p>
             <p className="text-white font-bold text-lg">{menu.name}</p>
-            <p className="text-white/50 text-xs mt-1">Scan any QR code to order on your phone</p>
+            <p className="text-white/50 text-xs mt-1">Order on your phone — scan the QR code below</p>
           </div>
         </div>
+
+        {/* Store QR hero */}
+        {menu.store_qr_code_svg && (
+          <div className="flex flex-col items-center py-6 px-8 border-b border-gray-200 bg-gray-50">
+            <div
+              className="[&>svg]:w-full [&>svg]:h-full bg-white rounded-xl border border-gray-200 p-2 shadow-sm"
+              style={{ width: 150, height: 150 }}
+              dangerouslySetInnerHTML={{ __html: menu.store_qr_code_svg }}
+            />
+            <p className="mt-3 text-sm font-medium text-gray-600 text-center max-w-xs">
+              Scan this code to open the app, or scan any item below to start your order
+            </p>
+          </div>
+        )}
 
         {/* Item grid */}
         <div

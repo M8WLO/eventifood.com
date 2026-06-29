@@ -8,6 +8,7 @@ export default function DisplayPage() {
   const [storeName, setStoreName] = useState('')
   const [slug, setSlug] = useState('')
   const [loading, setLoading] = useState(true)
+  const [needsFullscreen, setNeedsFullscreen] = useState(true)
 
   useEffect(() => {
     api.get('/api/tenants/mine/').then((r) => {
@@ -16,6 +17,19 @@ export default function DisplayPage() {
       setSlug(r.data.slug || '')
     }).finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    const handler = () => {
+      if (!document.fullscreenElement) setNeedsFullscreen(true)
+    }
+    document.addEventListener('fullscreenchange', handler)
+    return () => document.removeEventListener('fullscreenchange', handler)
+  }, [])
+
+  const enterFullscreen = () => {
+    document.documentElement.requestFullscreen().catch(() => {})
+    setNeedsFullscreen(false)
+  }
 
   if (loading) {
     return (
@@ -46,6 +60,18 @@ export default function DisplayPage() {
           <p className="text-lg text-gray-400">{slug}.eventifood.com</p>
         )}
       </div>
+
+      {needsFullscreen && (
+        <div
+          onClick={enterFullscreen}
+          className="fixed inset-0 bg-black/50 z-10 flex items-end justify-center pb-16 cursor-pointer"
+        >
+          <div className="bg-white/95 backdrop-blur rounded-2xl px-8 py-5 text-center shadow-xl">
+            <p className="text-lg font-semibold text-gray-900">Click anywhere to go fullscreen</p>
+            <p className="text-sm text-gray-500 mt-0.5">Press Esc to exit fullscreen</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

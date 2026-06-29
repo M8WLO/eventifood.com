@@ -483,6 +483,23 @@ class AdminSubscriptionView(APIView):
             return Response({'detail': 'Subscription not found.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(AdminSubscriptionSerializer(sub).data)
 
+    def post(self, request, slug):
+        from tenants.models import Tenant
+        try:
+            tenant = Tenant.objects.get(slug=slug)
+        except Tenant.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        if Subscription.objects.filter(tenant=tenant).exists():
+            return Response({'detail': 'Subscription already exists. Use PATCH to update.'}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = AdminSubscriptionSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        sub = serializer.save(tenant=tenant)
+        tp, _ = TenantPlan.objects.get_or_create(tenant=tenant)
+        if sub.plan_tier:
+            tp.set_plan(sub.plan_tier, user=request.user)
+        return Response(AdminSubscriptionSerializer(sub).data, status=status.HTTP_201_CREATED)
+
     def patch(self, request, slug):
         sub = self._get_sub(slug)
         if not sub:

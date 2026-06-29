@@ -79,7 +79,6 @@ function BoardContent() {
   const [kitchenNav, setKitchenNav] = useState<string[]>([])
   const [orderMode, setOrderMode] = useState<string>('daily')
   const [advancing, setAdvancing] = useState<Set<number>>(new Set())
-  const [undoConfirm, setUndoConfirm] = useState<Order | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyOrders, setHistoryOrders] = useState<Order[]>([])
   const [historySearch, setHistorySearch] = useState('')
@@ -222,48 +221,59 @@ function BoardContent() {
           </div>
         </header>
 
-        {/* Order list */}
-        <div className="flex-1 overflow-y-auto p-5">
-          {active.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-700 gap-3">
-              <span className="text-5xl">🍳</span>
-              <p className="text-xl font-semibold">No active orders</p>
-              <p className="text-sm">New orders will appear here automatically</p>
-            </div>
-          ) : (
-            <div className="max-w-2xl mx-auto space-y-3">
-              {active.map((o) => {
-                const cfg = STATUS_CONFIG[o.status]
-                const isAdvancing = advancing.has(o.id)
-                return (
-                  <div
-                    key={o.id}
-                    className={`bg-[#1e1e30] rounded-2xl p-5 flex flex-col gap-3 transition-opacity ${
-                      isAdvancing ? 'opacity-50' : ''
-                    } ${o.status === 'placed' ? 'ring-1 ring-green-500/30' : ''}`}
-                  >
-                    {/* Top row: order details + status badge */}
-                    <div className="flex items-start justify-between gap-4">
-                      {/* Left: number + items */}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm text-gray-500 font-medium mb-1">
+        {/* Order columns */}
+        <div className="flex-1 overflow-hidden flex gap-0">
+          {(['placed', 'preparing', 'ready'] as const).map((colStatus) => {
+            const colOrders = active.filter((o) => o.status === colStatus)
+            const colCfg = STATUS_CONFIG[colStatus]
+            const colColors: Record<string, { header: string; ring: string; badge: string }> = {
+              placed:    { header: 'border-green-500/40 bg-green-500/5', ring: 'ring-1 ring-green-500/20', badge: 'bg-green-500/20 text-green-300' },
+              preparing: { header: 'border-orange-500/40 bg-orange-500/5', ring: 'ring-1 ring-orange-500/20', badge: 'bg-orange-500/20 text-orange-300' },
+              ready:     { header: 'border-purple-500/40 bg-purple-500/5', ring: 'ring-1 ring-purple-500/20', badge: 'bg-purple-500/20 text-purple-300' },
+            }
+            const cc = colColors[colStatus]
+            return (
+              <div key={colStatus} className="flex-1 min-w-0 flex flex-col border-r border-gray-800 last:border-r-0">
+                {/* Column header */}
+                <div className={`shrink-0 px-4 py-3 border-b ${cc.header} flex items-center justify-between`}>
+                  <span className="font-bold text-sm text-white">
+                    {colStatus === 'placed' ? 'New' : colStatus === 'preparing' ? 'Preparing' : 'Ready'}
+                  </span>
+                  {colOrders.length > 0 && (
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${cc.badge}`}>
+                      {colOrders.length}
+                    </span>
+                  )}
+                </div>
+                {/* Column body */}
+                <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                  {colOrders.length === 0 ? (
+                    <div className="flex items-center justify-center h-20 text-gray-700 text-sm">
+                      —
+                    </div>
+                  ) : colOrders.map((o) => {
+                    const isAdvancing = advancing.has(o.id)
+                    return (
+                      <div
+                        key={o.id}
+                        className={`bg-[#1e1e30] rounded-2xl p-4 flex flex-col gap-3 transition-opacity ${isAdvancing ? 'opacity-50' : ''} ${cc.ring}`}
+                      >
+                        <div className="text-xs text-gray-500 font-medium">
                           {displayNumber(o, orderMode)}
-                          {o.buyer_name && (
-                            <span className="ml-2 text-gray-600">· {o.buyer_name}</span>
-                          )}
+                          {o.buyer_name && <span className="ml-2 text-gray-600">· {o.buyer_name}</span>}
                         </div>
                         <ul className="space-y-0.5">
                           {o.items.map((item, i) => (
-                            <li key={i} className="text-white text-base font-medium">
+                            <li key={i} className="text-white text-sm font-medium">
                               {item.product_name}{' '}
                               <span className="text-gray-400">×{item.quantity}</span>
                               {item.variation_name && item.variation_name !== 'Standard' && (
-                                <span className="text-gray-500 text-sm ml-1">({item.variation_name})</span>
+                                <span className="text-gray-500 text-xs ml-1">({item.variation_name})</span>
                               )}
                               {item.extras?.length > 0 && (
-                                <ul className="ml-4 mt-0.5 space-y-0">
+                                <ul className="ml-3 mt-0.5">
                                   {item.extras.map((e) => (
-                                    <li key={e.id} className="text-sm text-red-400 font-medium">
+                                    <li key={e.id} className="text-xs text-red-400 font-medium">
                                       {Number(e.additional_price) < 0 ? '−' : '+'} {e.name}
                                     </li>
                                   ))}
@@ -272,81 +282,45 @@ function BoardContent() {
                             </li>
                           ))}
                         </ul>
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 pt-2 border-t border-gray-700/50">
+                          {PREV_STATUS[colStatus] && (
+                            <button
+                              onClick={() => setStatus(o, PREV_STATUS[colStatus])}
+                              disabled={isAdvancing}
+                              className="text-xs text-gray-500 hover:text-gray-300 hover:bg-gray-700/60 px-2 py-1 rounded-lg transition-all"
+                            >
+                              ↩ Undo
+                            </button>
+                          )}
+                          <div className="flex-1" />
+                          {colStatus === 'ready' ? (
+                            <button
+                              onClick={() => setStatus(o, 'collected')}
+                              disabled={isAdvancing}
+                              className="px-4 py-1.5 rounded-full font-semibold text-xs bg-gray-700 hover:bg-gray-600 text-gray-200 transition-all active:scale-95"
+                            >
+                              Collected ✓
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => advanceStatus(o)}
+                              disabled={isAdvancing}
+                              className={`px-4 py-1.5 rounded-full font-bold text-xs transition-all active:scale-95 ${colCfg.color}`}
+                            >
+                              {colCfg.nextLabel}
+                            </button>
+                          )}
+                        </div>
                       </div>
-
-                      {/* Right: status badge only */}
-                      {cfg && (
-                        <button
-                          onClick={() => o.status === 'ready' ? setUndoConfirm(o) : advanceStatus(o)}
-                          disabled={isAdvancing}
-                          className={`shrink-0 px-5 py-2 rounded-full font-bold text-sm transition-all active:scale-95 ${cfg.color}`}
-                          title={o.status === 'ready' ? 'Move back to Preparing' : cfg.nextLabel}
-                        >
-                          {cfg.label}
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Bottom row: undo left, collected right (for ready) */}
-                    {PREV_STATUS[o.status] && (
-                      <div className="flex items-center justify-between pt-1 border-t border-gray-700/50">
-                        <button
-                          onClick={() => setStatus(o, PREV_STATUS[o.status])}
-                          disabled={isAdvancing}
-                          className="px-4 py-1.5 rounded-full text-sm font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-700/60 transition-all active:scale-95"
-                        >
-                          ↩ Undo
-                        </button>
-                        {o.status === 'ready' && (
-                          <button
-                            onClick={() => setStatus(o, 'collected')}
-                            disabled={isAdvancing}
-                            className="px-6 py-2 rounded-full font-semibold text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 transition-all active:scale-95"
-                          >
-                            Collected ✓
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
-
-      {/* Undo-ready confirmation modal */}
-      {undoConfirm && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100] p-6">
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center">
-            <p className="text-2xl mb-3">⚠️</p>
-            <h3 className="text-xl font-bold text-white mb-2">Move back to Preparing?</h3>
-            <p className="text-gray-400 text-sm mb-6">
-              Order {displayNumber(undoConfirm, orderMode)} will be moved back to&nbsp;
-              <span className="text-orange-400 font-semibold">Preparing</span>.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setUndoConfirm(null)}
-                className="flex-1 px-4 py-3 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-semibold transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={async () => {
-                  const order = undoConfirm
-                  setUndoConfirm(null)
-                  await setStatus(order, 'preparing')
-                }}
-                className="flex-1 px-4 py-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold transition-colors"
-              >
-                Yes, move back
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* History modal */}
       {historyOpen && (

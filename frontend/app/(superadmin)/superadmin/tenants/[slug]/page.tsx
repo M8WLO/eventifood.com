@@ -86,6 +86,17 @@ interface PlanOption {
   id: number
   name: string
   billing_model: string
+  feature_flags: string[]
+}
+
+const ALL_FEATURE_FLAGS = [
+  'print_menus', 'inventory', 'wastage', 'analytics',
+  'events', 'discounts', 'wait_time', 'staff', 'sms',
+]
+const FLAG_LABELS: Record<string, string> = {
+  print_menus: 'Print menus', inventory: 'Inventory', wastage: 'Wastage',
+  analytics: 'Analytics', events: 'Events', discounts: 'Discounts',
+  wait_time: 'Wait time', staff: 'Staff costs', sms: 'SMS',
 }
 
 const TABS = ['Overview', 'Settings', 'Users', 'Orders', 'Subscription'] as const
@@ -113,6 +124,13 @@ export default function TenantDetailPage() {
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
   const [plans, setPlans] = useState<PlanOption[]>([])
+  const [planFlags, setPlanFlags] = useState<string[]>([])
+  const [planFlagsSaving, setPlanFlagsSaving] = useState(false)
+
+  // Stripe Connect admin state
+  const [stripeStatus, setStripeStatus] = useState<{ stripe_account_id: string | null, stripe_onboarding_complete: boolean } | null>(null)
+  const [stripeResetting, setStripeResetting] = useState(false)
+  const [stripeMsg, setStripeMsg] = useState('')
 
   // User edit modal state
   const [editUser, setEditUser] = useState<Member | null>(null)
@@ -178,6 +196,7 @@ export default function TenantDetailPage() {
     api.get('/api/subscriptions/plans/admin/').then((r) => setPlans(r.data)).catch(() => {})
     api.get(`/api/subscriptions/admin/${slug}/`).then((r) => {
       setSub(r.data)
+      setPlanFlags(r.data.plan_tier?.feature_flags || [])
       setSubForm({
         status: r.data.status || '',
         plan: r.data.plan || '',
@@ -189,9 +208,25 @@ export default function TenantDetailPage() {
         stripe_subscription_id: r.data.stripe_subscription_id || '',
       })
     }).catch(() => {})
+    api.get(`/api/payments/admin/stripe/${slug}/`).then((r) => setStripeStatus(r.data)).catch(() => {})
   }, [slug])
 
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000) }
+
+  const resetStripe = async () => {
+    if (!confirm("Clear this tenant's Stripe Connect link? The seller will need to re-connect Stripe to accept card payments.")) return
+    setStripeResetting(true)
+    setStripeMsg('')
+    try {
+      const r = await api.post(`/api/payments/admin/stripe/${slug}/reset/`)
+      setStripeMsg(r.data.detail || 'Stripe connection cleared.')
+      setStripeStatus({ stripe_account_id: null, stripe_onboarding_complete: false })
+    } catch {
+      setStripeMsg('Failed to reset. Please try again.')
+    } finally {
+      setStripeResetting(false)
+    }
+  }
 
   const toggleActive = async () => {
     if (!tenant) return
@@ -392,9 +427,50 @@ export default function TenantDetailPage() {
         stripe_subscription_id: subForm.stripe_subscription_id,
       })
       setSub(data)
+      setPlanFlags(data.plan_tier?.feature_flags || [])
       flash('Subscription saved.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const createSub = async () => {
+    setSaving(true)
+    try {
+      const { data } = await api.post(`/api/subscriptions/admin/${slug}/`, {
+        status: 'trialing',
+        plan: 'annual',
+        plan_tier_id: subForm.plan_tier_id ? Number(subForm.plan_tier_id) : null,
+      })
+      setSub(data)
+      setPlanFlags(data.plan_tier?.feature_flags || [])
+      setSubForm({
+        status: data.status || '',
+        plan: data.plan || '',
+        plan_tier_id: data.plan_tier?.id != null ? String(data.plan_tier.id) : null,
+        annual_cost: data.annual_cost || '',
+        started_at: data.started_at ? data.started_at.slice(0, 10) : '',
+        next_billing_date: data.next_billing_date || '',
+        stripe_customer_id: data.stripe_customer_id || '',
+        stripe_subscription_id: data.stripe_subscription_id || '',
+      })
+      flash('Subscription created.')
+    } catch {
+      flash('Failed to create subscription.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const savePlanFlags = async () => {
+    if (!subForm.plan_tier_id) return
+    setPlanFlagsSaving(true)
+    try {
+      await api.patch(`/api/subscriptions/plans/${subForm.plan_tier_id}/`, { feature_flags: planFlags })
+      setPlans((prev) => prev.map((p) => String(p.id) === subForm.plan_tier_id ? { ...p, feature_flags: planFlags } : p))
+      flash('Plan features updated — affects all tenants on this plan.')
+    } finally {
+      setPlanFlagsSaving(false)
     }
   }
 
@@ -925,7 +1001,30 @@ export default function TenantDetailPage() {
         <div className="card space-y-5 max-w-lg">
           <h2 className="font-semibold text-gray-700">Subscription details</h2>
           {!sub ? (
-            <p className="text-gray-400 text-sm">No subscription found for this tenant.</p>
+            <div className="space-y-4">
+              <p className="text-gray-400 text-sm">No subscription found for this tenant.</p>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Plan tier (optional)</label>
+                <select
+                  value={subForm.plan_tier_id ?? ''}
+                  onChange={(e) => {
+                    const newId = e.target.value || null
+                    setSubForm((p) => ({ ...p, plan_tier_id: newId }))
+                    const sel = plans.find((pl) => String(pl.id) === newId)
+                    setPlanFlags(sel?.feature_flags || [])
+                  }}
+                  className="input-field"
+                >
+                  <option value="">— No plan —</option>
+                  {plans.map((pl) => (
+                    <option key={pl.id} value={String(pl.id)}>{pl.name}</option>
+                  ))}
+                </select>
+              </div>
+              <button onClick={createSub} disabled={saving} className="btn-primary">
+                {saving ? 'Creating…' : 'Create subscription'}
+              </button>
+            </div>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-4">
@@ -943,7 +1042,12 @@ export default function TenantDetailPage() {
                   <label className="block text-xs font-medium text-gray-500 mb-1">Plan tier</label>
                   <select
                     value={subForm.plan_tier_id ?? ''}
-                    onChange={(e) => setSubForm((p) => ({ ...p, plan_tier_id: e.target.value || null }))}
+                    onChange={(e) => {
+                      const newId = e.target.value || null
+                      setSubForm((p) => ({ ...p, plan_tier_id: newId }))
+                      const sel = plans.find((pl) => String(pl.id) === newId)
+                      setPlanFlags(sel?.feature_flags || [])
+                    }}
                     className="input-field"
                   >
                     <option value="">— No plan —</option>
@@ -1021,8 +1125,73 @@ export default function TenantDetailPage() {
               >
                 {saving ? 'Saving…' : 'Save subscription'}
               </button>
+
+              {subForm.plan_tier_id && (
+                <div className="border-t pt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Plan feature flags
+                    </h3>
+                    <span className="text-[10px] text-gray-400">Affects all tenants on this plan</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                    {ALL_FEATURE_FLAGS.map((flag) => (
+                      <label key={flag} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="w-3.5 h-3.5 rounded text-brand-600"
+                          checked={planFlags.includes(flag)}
+                          onChange={() =>
+                            setPlanFlags((prev) =>
+                              prev.includes(flag) ? prev.filter((f) => f !== flag) : [...prev, flag]
+                            )
+                          }
+                        />
+                        <span className="text-xs text-gray-700">{FLAG_LABELS[flag]}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <button
+                    onClick={savePlanFlags}
+                    disabled={planFlagsSaving}
+                    className="btn-secondary text-sm"
+                  >
+                    {planFlagsSaving ? 'Saving…' : 'Save plan flags'}
+                  </button>
+                </div>
+              )}
             </>
           )}
+
+          {/* Stripe Connect */}
+          <div className="border-t border-gray-100 pt-5 space-y-3">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Stripe Connect</h3>
+            {stripeStatus === null ? (
+              <p className="text-xs text-gray-400">Loading…</p>
+            ) : stripeStatus.stripe_account_id ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${stripeStatus.stripe_onboarding_complete ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                    {stripeStatus.stripe_onboarding_complete ? 'Complete' : 'Incomplete'}
+                  </span>
+                  <span className="text-xs text-gray-500 font-mono">{stripeStatus.stripe_account_id}</span>
+                </div>
+                {stripeMsg && <p className="text-xs text-green-600">{stripeMsg}</p>}
+                <button
+                  onClick={resetStripe}
+                  disabled={stripeResetting}
+                  className="text-sm text-red-600 hover:text-red-700 underline disabled:opacity-50"
+                >
+                  {stripeResetting ? 'Resetting…' : 'Reset Stripe connection'}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <p className="text-xs text-gray-400">No Stripe account connected.</p>
+                {stripeMsg && <p className="text-xs text-red-500">{stripeMsg}</p>}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

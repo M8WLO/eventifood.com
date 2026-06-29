@@ -80,6 +80,7 @@ const EMPTY_FORM: ProductForm = {
 export default function MenuPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
+  const [slug, setSlug] = useState<string>('')
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [newCatName, setNewCatName] = useState('')
   const [addingCat, setAddingCat] = useState(false)
@@ -101,7 +102,10 @@ export default function MenuPage() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    api.get('/api/tenants/mine/').then((r) => setSlug(r.data.slug)).catch(() => {})
+  }, [])
 
   const toggleExpand = (id: number) => {
     setExpanded((prev) => {
@@ -340,7 +344,28 @@ export default function MenuPage() {
 
   return (
     <div className="p-8 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Menu</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-4">Menu</h1>
+
+      {/* Getting started help */}
+      <div className="rounded-xl border border-brand-100 bg-brand-50/60 px-5 py-4 mb-6 space-y-2">
+        <p className="text-sm font-semibold text-brand-700">How your menu works</p>
+        <p className="text-sm text-gray-600 leading-relaxed">
+          Start by creating a <span className="font-medium text-gray-800">category</span> — this is a section heading on your menu, such as <span className="font-medium text-gray-800">Burgers</span>, <span className="font-medium text-gray-800">Sides</span>, or <span className="font-medium text-gray-800">Drinks</span>. Then add your items underneath their category. Customers see exactly this structure when they browse your store.
+        </p>
+        {slug && (
+          <p className="text-sm text-gray-600">
+            Want to see it as your customers do?{' '}
+            <a
+              href={`https://${slug}.eventifood.com`}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-brand-600 hover:text-brand-800 underline underline-offset-2"
+            >
+              Open <span className="font-mono">{slug}.eventifood.com</span> on your phone or tablet.
+            </a>
+          </p>
+        )}
+      </div>
 
       {/* Add category */}
       <div className="card mb-6 flex gap-3">

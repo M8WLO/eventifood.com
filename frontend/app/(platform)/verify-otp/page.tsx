@@ -10,6 +10,7 @@ function VerifyOTPForm() {
   const searchParams = useSearchParams()
   const partialToken = searchParams.get('token') || ''
   const redirectTo = searchParams.get('redirect') || '/seller/dashboard'
+  const isDemo = searchParams.get('demo') === '1'
 
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -51,12 +52,15 @@ function VerifyOTPForm() {
           <div className="text-5xl mb-4">📧</div>
           <h1 className="text-2xl font-extrabold text-gray-900">Check your email</h1>
           <p className="text-gray-500 mt-2 text-sm">
-            We sent a 6-digit code to your email. Enter it below to sign in.
+            {isDemo
+              ? 'This is a demo store — no code will be sent to your email.'
+              : 'We sent a 6-digit code to your email. Enter it below to sign in.'}
           </p>
         </div>
-        {process.env.NEXT_PUBLIC_TEST_MODE === 'true' && (
-          <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 text-sm text-yellow-800 text-center">
-            <span className="font-semibold">Test mode:</span> enter code <span className="font-mono font-bold tracking-widest">000000</span>
+        {isDemo && (
+          <div className="mb-4 bg-yellow-50 border border-yellow-300 rounded-xl px-4 py-3 text-sm text-yellow-800 text-center">
+            <span className="font-semibold">Demo store:</span> use code{' '}
+            <span className="font-mono font-bold tracking-widest">000000</span> to sign in
           </div>
         )}
         <div className="card shadow-md">
@@ -81,12 +85,14 @@ function VerifyOTPForm() {
               {loading ? 'Verifying…' : 'Verify & sign in'}
             </button>
           </form>
-          <button
-            onClick={handleResend}
-            className="mt-4 text-sm text-brand-600 hover:underline w-full text-center"
-          >
-            Resend code
-          </button>
+          {!isDemo && (
+            <button
+              onClick={handleResend}
+              className="mt-4 text-sm text-brand-600 hover:underline w-full text-center"
+            >
+              Resend code
+            </button>
+          )}
         </div>
       </div>
     </main>
