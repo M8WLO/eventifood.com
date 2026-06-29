@@ -765,10 +765,14 @@ export default async function LandingPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <Image src="/logo.png" alt="Eventifood" width={240} height={80} className="h-16 w-auto brightness-0 invert opacity-70" />
-            <div className="flex gap-6 text-sm">
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
               <a href="#for-sellers" className="hover:text-white transition-colors">For Sellers</a>
               <a href="#for-customers" className="hover:text-white transition-colors">For Customers</a>
               <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
+              <Link href="/food-truck-pos" className="hover:text-white transition-colors">Food Truck POS</Link>
+              <Link href="/qr-code-ordering" className="hover:text-white transition-colors">QR Ordering</Link>
+              <Link href="/mobile-catering-software" className="hover:text-white transition-colors">Mobile Catering</Link>
+              <Link href="/food-truck-queue-management" className="hover:text-white transition-colors">Queue Management</Link>
               <Link href="/login" className="hover:text-white transition-colors">Sign in</Link>
               <Link href="/register" className="hover:text-white transition-colors">Register</Link>
             </div>
