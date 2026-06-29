@@ -61,6 +61,7 @@ export default function SuperAdminPage() {
   const [featureOverrideSaving, setFeatureOverrideSaving] = useState(false)
   const [copyFrom, setCopyFrom] = useState('')
   const [copyTo, setCopyTo] = useState('')
+  const [copyOrders, setCopyOrders] = useState(false)
   const [copyRunning, setCopyRunning] = useState(false)
   const [copyResult, setCopyResult] = useState<string | null>(null)
   const [orphanedUsers, setOrphanedUsers] = useState<{id: number, email: string, full_name: string, email_verified: boolean, date_joined: string}[]>([])
@@ -128,13 +129,15 @@ export default function SuperAdminPage() {
 
   const copyTenant = async () => {
     if (!copyFrom || !copyTo) return
-    if (!confirm(`Copy ALL data from ${copyFrom} → ${copyTo}? This will overwrite the destination tenant's catalog, settings and orders.`)) return
+    const ordersNote = copyOrders ? ', and historical orders (includes customer names/emails/phones)' : ''
+    if (!confirm(`Copy catalog, settings${ordersNote} from ${copyFrom} → ${copyTo}? This will overwrite the destination.`)) return
     setCopyRunning(true)
     setCopyResult(null)
     try {
-      const r = await api.post('/api/tenants/admin/copy/', { from_email: copyFrom, to_email: copyTo, copy_orders: true })
+      const r = await api.post('/api/tenants/admin/copy/', { from_email: copyFrom, to_email: copyTo, copy_orders: copyOrders })
       const s = r.data.stats
-      setCopyResult(`Done: ${s.categories} categories, ${s.products} products, ${s.variations} variations, ${s.orders} orders copied.`)
+      const ordersPart = copyOrders ? `, ${s.orders} orders` : ''
+      setCopyResult(`Done: ${s.categories} categories, ${s.products} products, ${s.variations} variations${ordersPart} copied.`)
     } catch (e: any) {
       setCopyResult(`Error: ${e?.response?.data?.detail || 'Copy failed — check backend logs.'}`)
     } finally {
@@ -286,7 +289,7 @@ export default function SuperAdminPage() {
         <div>
           <h2 className="font-semibold text-gray-800">Copy tenant data</h2>
           <p className="text-sm text-gray-500 mt-0.5">
-            Copy all catalog (categories, products, photos), settings and orders from one account to another. Overwrites the destination.
+            Copy catalog (categories, products, photos) and settings from one account to another. Overwrites the destination. Orders are excluded by default to avoid copying customer personal data.
           </p>
         </div>
         <div className="flex flex-wrap gap-3 items-end">
@@ -298,13 +301,24 @@ export default function SuperAdminPage() {
             <label className="block text-xs font-medium text-gray-600 mb-1">Copy TO (owner email)</label>
             <input value={copyTo} onChange={e => setCopyTo(e.target.value)} placeholder="dest@example.com" className="input-field" />
           </div>
-          <button
-            onClick={copyTenant}
-            disabled={copyRunning || !copyFrom || !copyTo}
-            className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 shrink-0"
-          >
-            {copyRunning ? 'Copying…' : 'Copy →'}
-          </button>
+          <div className="flex flex-col justify-end gap-2 shrink-0">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={copyOrders}
+                onChange={e => setCopyOrders(e.target.checked)}
+                className="w-4 h-4 rounded"
+              />
+              <span className="text-xs text-gray-600">Include orders <span className="text-orange-500 font-medium">(copies customer data)</span></span>
+            </label>
+            <button
+              onClick={copyTenant}
+              disabled={copyRunning || !copyFrom || !copyTo}
+              className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg disabled:opacity-50"
+            >
+              {copyRunning ? 'Copying…' : 'Copy →'}
+            </button>
+          </div>
         </div>
         {copyResult && (
           <p className={`text-sm font-medium ${copyResult.startsWith('Error') ? 'text-red-600' : 'text-green-700'}`}>
