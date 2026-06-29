@@ -315,7 +315,9 @@ function StorefrontContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-32">
+    <div className="min-h-screen bg-gray-300 flex justify-center">
+      <div className="relative w-full max-w-[480px] min-h-screen bg-gray-50 pb-32 shadow-2xl">
+
       {/* QR auto-add toast */}
       {addedToast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl bg-gray-900 text-white text-sm font-medium shadow-xl animate-fade-in">
@@ -333,7 +335,7 @@ function StorefrontContent() {
           </div>
           <button
             onClick={() => setScannerOpen(true)}
-            className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-black/70 transition-colors"
+            className="md:hidden absolute bottom-3 right-3 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-black/70 transition-colors"
           >
             <QrIcon />
             Scan item
@@ -345,7 +347,7 @@ function StorefrontContent() {
           <p className="text-sm opacity-80 mt-1">Collect your order when alerted</p>
           <button
             onClick={() => setScannerOpen(true)}
-            className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-white/30 transition-colors"
+            className="md:hidden absolute bottom-3 right-3 flex items-center gap-1.5 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-white/30 transition-colors"
           >
             <QrIcon />
             Scan item
@@ -355,7 +357,7 @@ function StorefrontContent() {
 
       {/* Live wait time banner */}
       {waitTimeEnabled && (
-        <div className="max-w-lg mx-auto px-4 pt-4">
+        <div className="px-4 pt-4">
           <div
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-white text-sm font-medium"
             style={{ backgroundColor: colors.primary }}
@@ -373,7 +375,7 @@ function StorefrontContent() {
 
       {/* Active event banner */}
       {activeEvent && showEventMenuName && (
-        <div className="max-w-lg mx-auto px-4 pt-4">
+        <div className="px-4 pt-4">
           <div
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-white text-sm font-medium"
             style={{ backgroundColor: colors.dark }}
@@ -388,7 +390,7 @@ function StorefrontContent() {
       )}
 
       {/* Menu */}
-      <main className="max-w-lg mx-auto px-4 py-6 space-y-4">
+      <main className="px-4 py-6 space-y-4">
         {displayCategories.length === 0 && (
           <div className="text-center py-16 text-gray-400">
             <p className="text-4xl mb-3">🍽️</p>
@@ -490,18 +492,18 @@ function StorefrontContent() {
 
       {/* Demo mode banner */}
       {isDemo && (
-        <div className="fixed bottom-0 left-0 right-0 z-10 bg-orange-500 text-white text-center text-xs font-semibold py-2 px-4">
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-10 bg-orange-500 text-white text-center text-xs font-semibold py-2 px-4">
           Demo store — this is a test environment, no payments will be taken
         </div>
       )}
 
       {/* Sticky basket bar */}
       {basketCount > 0 && (
-        <div className={`fixed left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-lg ${isDemo ? 'bottom-8' : 'bottom-0'}`}>
+        <div className={`fixed left-1/2 -translate-x-1/2 w-full max-w-[480px] p-4 bg-white border-t border-gray-100 shadow-lg ${isDemo ? 'bottom-8' : 'bottom-0'}`}>
           <Link
             href={`/store/${slug}/basket`}
             style={{ backgroundColor: colors.primary }}
-            className="flex items-center justify-between text-white font-bold px-5 py-3 rounded-xl max-w-lg mx-auto hover:opacity-90 transition-opacity"
+            className="flex items-center justify-between text-white font-bold px-5 py-3 rounded-xl hover:opacity-90 transition-opacity"
           >
             <span style={{ backgroundColor: colors.badge }} className="text-white text-sm px-2 py-0.5 rounded-full">
               {basketCount}
@@ -573,6 +575,8 @@ function StorefrontContent() {
           </div>
         </div>
       )}
+
+      </div>
     </div>
   )
 }
