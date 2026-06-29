@@ -166,15 +166,15 @@ const whyUs = [
 
 const testimonials = [
   {
-    quote: 'We used to serve 40 customers an hour on a good day. Now we're hitting 60+ because people order ahead while queuing. The kitchen board means nothing gets missed.',
+    quote: "We used to serve 40 customers an hour on a good day. Now we're hitting 60+ because people order ahead while queuing. The kitchen board means nothing gets missed.",
     name: 'Sarah M.', van: 'The Sizzle Shack',
   },
   {
-    quote: 'Setting up took 20 minutes. The live order alerts are brilliant — customers stop hovering at the hatch because they know their phone will buzz when it\'s ready.',
+    quote: "Setting up took 20 minutes. The live order alerts are brilliant — customers stop hovering at the hatch because they know their phone will buzz when it's ready.",
     name: 'Tom K.', van: 'Kogi Street',
   },
   {
-    quote: 'I ran a festival event menu for the weekend — totally different prices and items from my regular menu, live within 10 minutes. Absolutely game-changing.',
+    quote: "I ran a festival event menu for the weekend — totally different prices and items from my regular menu, live within 10 minutes. Absolutely game-changing.",
     name: 'Priya R.', van: 'Spice Route',
   },
 ]
