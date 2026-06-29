@@ -143,11 +143,11 @@ export default function PrintMenuPage() {
                   {item.qr_code_svg ? (
                     <div
                       className="shrink-0 [&>svg]:w-full [&>svg]:h-full"
-                      style={{ width: 72, height: 72 }}
+                      style={{ width: 185, height: 185 }}
                       dangerouslySetInnerHTML={{ __html: item.qr_code_svg }}
                     />
                   ) : (
-                    <div className="shrink-0 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-400" style={{ width: 72, height: 72 }}>
+                    <div className="shrink-0 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-400" style={{ width: 185, height: 185 }}>
                       No QR
                     </div>
                   )}
