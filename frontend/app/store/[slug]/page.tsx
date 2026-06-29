@@ -157,23 +157,34 @@ function StorefrontContent() {
     })
   }
 
-  const onQrScan = (productId: number, varId: number | null): string | null => {
+  const onQrLookup = (productId: number, varId: number | null): string | null => {
     for (const cat of displayCategories) {
       const product = cat.products.find((p) => p.id === productId && p.is_visible && !p.out_of_stock)
       if (!product) continue
       const availVars = product.variations.filter((v) => v.is_available)
       if (varId) {
         const variation = availVars.find((v) => v.id === varId)
-        if (variation) {
-          commitToBasket(product, variation, [])
-          return `${product.name}${variation.name !== 'Standard' ? ' — ' + variation.name : ''}`
-        }
+        if (variation) return `${product.name}${variation.name !== 'Standard' ? ' — ' + variation.name : ''}`
       } else if (availVars.length > 0) {
-        commitToBasket(product, availVars[0], [])
         return product.name
       }
     }
     return null
+  }
+
+  const onQrConfirm = (productId: number, varId: number | null): void => {
+    for (const cat of displayCategories) {
+      const product = cat.products.find((p) => p.id === productId && p.is_visible && !p.out_of_stock)
+      if (!product) continue
+      const availVars = product.variations.filter((v) => v.is_available)
+      if (varId) {
+        const variation = availVars.find((v) => v.id === varId)
+        if (variation) { commitToBasket(product, variation, []); return }
+      } else if (availVars.length > 0) {
+        commitToBasket(product, availVars[0], [])
+        return
+      }
+    }
   }
 
   const confirmExtras = () => {
@@ -502,7 +513,8 @@ function StorefrontContent() {
       {/* QR scanner modal */}
       {scannerOpen && (
         <QrScannerModal
-          onScan={onQrScan}
+          onLookup={onQrLookup}
+          onConfirm={onQrConfirm}
           onClose={() => setScannerOpen(false)}
         />
       )}

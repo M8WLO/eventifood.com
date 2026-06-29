@@ -4,8 +4,15 @@ import { useEffect, useRef, useState } from 'react'
 import { BrowserMultiFormatReader } from '@zxing/browser'
 
 interface Props {
-  onScan: (productId: number, varId: number | null) => string | null
+  onLookup: (productId: number, varId: number | null) => string | null
+  onConfirm: (productId: number, varId: number | null) => void
   onClose: () => void
+}
+
+interface Pending {
+  productId: number
+  varId: number | null
+  name: string
 }
 
 function parseQrText(text: string): { productId: number; varId: number | null } | null {
@@ -26,17 +33,17 @@ function parseQrText(text: string): { productId: number; varId: number | null } 
   }
 }
 
-export default function QrScannerModal({ onScan, onClose }: Props) {
+export default function QrScannerModal({ onLookup, onConfirm, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const controlsRef = useRef<{ stop: () => void } | null>(null)
-  const onScanRef = useRef(onScan)
+  const onLookupRef = useRef(onLookup)
   const lastRef = useRef<{ text: string; time: number }>({ text: '', time: 0 })
   const [ready, setReady] = useState(false)
-  const [lastAdded, setLastAdded] = useState<string | null>(null)
-  const [count, setCount] = useState(0)
+  const [pending, setPending] = useState<Pending | null>(null)
+  const [added, setAdded] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => { onScanRef.current = onScan }, [onScan])
+  useEffect(() => { onLookupRef.current = onLookup }, [onLookup])
 
   useEffect(() => {
     const reader = new BrowserMultiFormatReader()
@@ -51,15 +58,15 @@ export default function QrScannerModal({ onScan, onClose }: Props) {
       if (text === lastRef.current.text && now - lastRef.current.time < 2500) return
       lastRef.current = { text, time: now }
 
-      const parsed = parseQrText(text)
-      if (!parsed) return
-
-      const itemName = onScanRef.current(parsed.productId, parsed.varId)
-      if (itemName) {
-        setLastAdded(itemName)
-        setCount(c => c + 1)
-        setTimeout(() => setLastAdded(null), 2000)
-      }
+      // Don't process a new scan while a confirmation is pending
+      setPending((current) => {
+        if (current) return current
+        const parsed = parseQrText(text)
+        if (!parsed) return null
+        const name = onLookupRef.current(parsed.productId, parsed.varId)
+        if (!name) return null
+        return { productId: parsed.productId, varId: parsed.varId, name }
+      })
     }).then(controls => {
       controlsRef.current = controls
       setReady(true)
@@ -73,15 +80,29 @@ export default function QrScannerModal({ onScan, onClose }: Props) {
     }
   }, [])
 
+  const handleAdd = () => {
+    if (!pending) return
+    onConfirm(pending.productId, pending.varId)
+    setAdded(true)
+    setTimeout(() => {
+      setAdded(false)
+      setPending(null)
+      lastRef.current = { text: '', time: 0 }
+    }, 1200)
+  }
+
+  const handleCancel = () => {
+    setPending(null)
+    lastRef.current = { text: '', time: 0 }
+  }
+
   return (
     <div className="fixed inset-0 z-40 bg-black flex flex-col">
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-3 bg-black/80 shrink-0">
         <div>
-          <p className="text-white font-bold text-sm">Scan item to basket</p>
-          <p className="text-white/50 text-xs mt-0.5">
-            {count > 0 ? `${count} item${count !== 1 ? 's' : ''} added` : 'Point camera at a menu QR code'}
-          </p>
+          <p className="text-white font-bold text-sm">Scan to order</p>
+          <p className="text-white/50 text-xs mt-0.5">Point camera at a menu QR code</p>
         </div>
         <button
           onClick={onClose}
@@ -101,30 +122,52 @@ export default function QrScannerModal({ onScan, onClose }: Props) {
         />
 
         {/* Corner-bracket overlay */}
-        {ready && (
+        {ready && !pending && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="w-60 h-60 relative">
-              {/* dim surround */}
               <div className="absolute -inset-[9999px] bg-black/45" />
-              {/* clear box */}
               <div className="absolute inset-0 rounded-2xl overflow-hidden">
                 <div className="w-full h-full" />
               </div>
-              {/* corner brackets */}
               <div className="absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 border-white rounded-tl-2xl" />
               <div className="absolute top-0 right-0 w-10 h-10 border-t-4 border-r-4 border-white rounded-tr-2xl" />
               <div className="absolute bottom-0 left-0 w-10 h-10 border-b-4 border-l-4 border-white rounded-bl-2xl" />
               <div className="absolute bottom-0 right-0 w-10 h-10 border-b-4 border-r-4 border-white rounded-br-2xl" />
-              {/* scan line */}
               <div className="absolute inset-x-4 top-1/2 h-0.5 bg-white/60 animate-pulse" />
             </div>
           </div>
         )}
 
-        {/* Added toast */}
-        {lastAdded && (
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-green-500 text-white px-5 py-3 rounded-xl font-semibold text-sm shadow-lg">
-            ✓ {lastAdded} added to basket
+        {/* Confirmation overlay */}
+        {pending && (
+          <div className="absolute inset-0 bg-black/70 flex items-end justify-center p-6">
+            <div className="w-full max-w-sm bg-white rounded-2xl p-5 space-y-4 shadow-2xl">
+              {added ? (
+                <div className="text-center py-2 space-y-2">
+                  <p className="text-3xl">✅</p>
+                  <p className="font-bold text-gray-900">Added to basket!</p>
+                </div>
+              ) : (
+                <>
+                  <div className="text-center space-y-1">
+                    <p className="text-xs text-gray-400 uppercase tracking-widest font-semibold">Add to basket?</p>
+                    <p className="text-xl font-bold text-gray-900 leading-tight">{pending.name}</p>
+                  </div>
+                  <button
+                    onClick={handleAdd}
+                    className="w-full bg-gray-900 text-white font-bold py-3.5 rounded-xl text-base hover:bg-gray-700 transition-colors"
+                  >
+                    Add to basket
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    className="w-full text-gray-500 font-medium py-2 text-sm hover:text-gray-700 transition-colors"
+                  >
+                    Cancel — scan another
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         )}
 
@@ -149,7 +192,7 @@ export default function QrScannerModal({ onScan, onClose }: Props) {
 
       {/* Bottom hint */}
       <div className="bg-black/80 px-4 py-3 text-center shrink-0">
-        <p className="text-white/40 text-xs">Scanning continuously — tap ✕ when done</p>
+        <p className="text-white/40 text-xs">Tap ✕ when done scanning</p>
       </div>
     </div>
   )
