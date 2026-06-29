@@ -13,7 +13,7 @@ interface Product {
 interface Category { id: number; name: string; products: Product[] }
 interface GlobalExtra { id: number; name: string; price: string; qr_code_svg: string }
 interface SelectedItem { type: 'product' | 'variation' | 'global_extra'; id: number }
-interface PrintMenu { id: number; name: string; size: string; items: SelectedItem[]; updated_at: string }
+interface PrintMenu { id: number; name: string; size: string; items: SelectedItem[]; is_default: boolean; is_web_facing: boolean; updated_at: string }
 
 const SIZE_LABELS: Record<string, string> = { a4: 'A4', a3: 'A3', a2: 'A2' }
 
@@ -87,6 +87,16 @@ export default function PrintMenusPage() {
     } finally {
       setDeleting(null)
     }
+  }
+
+  const setDefault = async (id: number) => {
+    const { data } = await api.patch(`/api/catalog/print-menus/${id}/`, { is_default: true })
+    setMenus((prev) => prev.map((m) => m.id === id ? data : { ...m, is_default: false }))
+  }
+
+  const toggleWebFacing = async (m: PrintMenu) => {
+    const { data } = await api.patch(`/api/catalog/print-menus/${m.id}/`, { is_web_facing: !m.is_web_facing })
+    setMenus((prev) => prev.map((x) => x.id === m.id ? data : x))
   }
 
   if (designing !== null) {
@@ -224,30 +234,64 @@ export default function PrintMenusPage() {
       ) : (
         <div className="space-y-3">
           {menus.map((m) => (
-            <div key={m.id} className="card flex items-center justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-900">{m.name}</p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {SIZE_LABELS[m.size]} · {m.items.length} item{m.items.length !== 1 ? 's' : ''} ·
-                  Updated {new Date(m.updated_at).toLocaleDateString('en-GB')}
-                </p>
+            <div key={m.id} className="card space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-900">{m.name}</p>
+                    {m.is_default && (
+                      <span className="text-[10px] font-bold bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full">Default</span>
+                    )}
+                    {m.is_web_facing && (
+                      <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Web facing</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {SIZE_LABELS[m.size]} · {m.items.length} item{m.items.length !== 1 ? 's' : ''} ·
+                    Updated {new Date(m.updated_at).toLocaleDateString('en-GB')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={() => editMenu(m)} className="btn-secondary text-sm">Edit</button>
+                  <Link href={`/print-menu/${m.id}`} target="_blank" className="btn-primary text-sm">
+                    Download PDF ↗
+                  </Link>
+                  <button
+                    onClick={() => deleteMenu(m.id)}
+                    disabled={deleting === m.id}
+                    className="text-sm text-red-400 hover:text-red-600 font-medium px-2"
+                  >
+                    {deleting === m.id ? '…' : 'Delete'}
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button onClick={() => editMenu(m)} className="btn-secondary text-sm">Edit</button>
-                <Link
-                  href={`/print-menu/${m.id}`}
-                  target="_blank"
-                  className="btn-primary text-sm"
-                >
-                  Download PDF ↗
-                </Link>
-                <button
-                  onClick={() => deleteMenu(m.id)}
-                  disabled={deleting === m.id}
-                  className="text-sm text-red-400 hover:text-red-600 font-medium px-2"
-                >
-                  {deleting === m.id ? '…' : 'Delete'}
-                </button>
+              <div className="flex items-center gap-3 pt-1 border-t border-gray-100">
+                {!m.is_default && (
+                  <button
+                    onClick={() => setDefault(m.id)}
+                    className="text-xs font-medium text-brand-600 hover:text-brand-800 transition-colors"
+                  >
+                    Set as default
+                  </button>
+                )}
+                <label className="flex items-center gap-2 cursor-pointer ml-auto">
+                  <span className="text-xs text-gray-500">Web facing</span>
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={m.is_web_facing}
+                      onChange={() => toggleWebFacing(m)}
+                    />
+                    <div className={`w-8 h-4 rounded-full transition-colors ${m.is_web_facing ? 'bg-green-500' : 'bg-gray-200'}`} />
+                    <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${m.is_web_facing ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </div>
+                </label>
+                {m.is_default && m.is_web_facing && (
+                  <span className="text-xs text-gray-400">
+                    Live at <span className="font-mono">…/menu</span>
+                  </span>
+                )}
               </div>
             </div>
           ))}

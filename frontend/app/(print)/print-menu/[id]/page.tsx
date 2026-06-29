@@ -179,41 +179,39 @@ export default function PrintMenuPage() {
               className="item-card border border-gray-200 rounded-xl flex flex-col"
               style={{ background: '#fafafa' }}
             >
-              {/* Photo */}
-              {item.photo ? (
-                <img src={item.photo} alt={item.name} className="w-full object-cover rounded-t-xl" style={{ height: 120 }} />
-              ) : (
-                <div className="w-full flex items-center justify-center bg-gray-100 rounded-t-xl" style={{ height: 72 }}>
-                  <span className="text-3xl">🍽️</span>
-                </div>
-              )}
+              {/* Photo + QR row */}
+              <div className="flex rounded-t-xl overflow-hidden" style={{ height: 120 }}>
+                {item.photo ? (
+                  <img src={item.photo} alt={item.name} className="flex-1 object-cover" />
+                ) : (
+                  <div className="flex-1 flex items-center justify-center bg-gray-100">
+                    <span className="text-3xl">🍽️</span>
+                  </div>
+                )}
+                {item.qr_code_svg ? (
+                  <div
+                    className="shrink-0 [&>svg]:w-full [&>svg]:h-full border-l border-gray-200 bg-white"
+                    style={{ width: 120, height: 120 }}
+                    dangerouslySetInnerHTML={{ __html: item.qr_code_svg }}
+                  />
+                ) : (
+                  <div className="shrink-0 bg-gray-200 flex items-center justify-center text-xs text-gray-400" style={{ width: 120 }}>
+                    No QR
+                  </div>
+                )}
+              </div>
 
               {/* Details */}
-              <div className="flex-1 flex flex-col p-3 gap-2">
-                <div className="flex-1">
-                  <p className="font-bold text-gray-900 text-sm leading-tight">{item.name}</p>
-                  {item.description && (
-                    <p className="text-gray-500 text-xs mt-0.5 leading-snug line-clamp-2">{item.description}</p>
-                  )}
-                </div>
-                <div className="flex items-end justify-between gap-2 mt-auto pt-2 border-t border-gray-200">
-                  <div>
-                    {item.price ? (
-                      <p className="text-xl font-extrabold text-gray-900">£{Number(item.price).toFixed(2)}</p>
-                    ) : (
-                      <p className="text-sm text-gray-400 italic">See menu</p>
-                    )}
-                  </div>
-                  {item.qr_code_svg ? (
-                    <div
-                      className="shrink-0 [&>svg]:w-full [&>svg]:h-full"
-                      style={{ width: 185, height: 185 }}
-                      dangerouslySetInnerHTML={{ __html: item.qr_code_svg }}
-                    />
+              <div className="flex-1 flex flex-col p-3">
+                <p className="font-bold text-gray-900 text-sm leading-tight">{item.name}</p>
+                {item.description && (
+                  <p className="text-gray-500 text-xs mt-0.5 leading-snug line-clamp-2">{item.description}</p>
+                )}
+                <div className="mt-auto pt-2">
+                  {item.price ? (
+                    <p className="text-lg font-extrabold text-gray-900">£{Number(item.price).toFixed(2)}</p>
                   ) : (
-                    <div className="shrink-0 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-400" style={{ width: 185, height: 185 }}>
-                      No QR
-                    </div>
+                    <p className="text-sm text-gray-400 italic">See menu</p>
                   )}
                 </div>
               </div>

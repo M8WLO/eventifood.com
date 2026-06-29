@@ -292,6 +292,9 @@ class PrintMenuDetailView(APIView):
         serializer = PrintMenuSerializer(obj, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Enforce one default per tenant — clear the flag on all others first
+        if request.data.get('is_default'):
+            PrintMenu.objects.filter(tenant=request.tenant, is_default=True).exclude(pk=pk).update(is_default=False)
         serializer.save()
         return Response(serializer.data)
 
@@ -301,6 +304,77 @@ class PrintMenuDetailView(APIView):
             return Response(status=status.HTTP_404_NOT_FOUND)
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class PublicMenuView(APIView):
+    """Returns the fully resolved default+web-facing print menu for the storefront /menu page."""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        tenant = request.tenant
+        if not tenant:
+            return Response({'detail': 'Store not found.'}, status=status.HTTP_404_NOT_FOUND)
+        menu = PrintMenu.objects.filter(tenant=tenant, is_default=True, is_web_facing=True).first()
+        if not menu:
+            return Response({'detail': 'No public menu available.'}, status=status.HTTP_404_NOT_FOUND)
+
+        resolved = []
+        for item in menu.items:
+            t, iid = item.get('type'), item.get('id')
+            if t == 'product':
+                obj = Product.objects.filter(pk=iid, category__tenant=tenant).first()
+                if obj:
+                    if not obj.qr_code_svg:
+                        obj.generate_qr_code()
+                        Product.objects.filter(pk=obj.pk).update(qr_code_svg=obj.qr_code_svg)
+                    resolved.append({
+                        'type': 'product', 'id': obj.pk,
+                        'name': obj.name, 'description': obj.description,
+                        'price': str(obj.base_price) if obj.base_price else None,
+                        'photo': request.build_absolute_uri(obj.photo.url) if obj.photo else None,
+                        'qr_code_svg': obj.qr_code_svg,
+                    })
+            elif t == 'variation':
+                obj = ProductVariation.objects.select_related('product__category__tenant').filter(
+                    pk=iid, product__category__tenant=tenant
+                ).first()
+                if obj:
+                    if not obj.qr_code_svg:
+                        obj.generate_qr_code()
+                        ProductVariation.objects.filter(pk=obj.pk).update(qr_code_svg=obj.qr_code_svg)
+                    resolved.append({
+                        'type': 'variation', 'id': obj.pk,
+                        'name': f"{obj.product.name} — {obj.name}",
+                        'description': obj.product.description,
+                        'price': str(obj.retail_price),
+                        'photo': request.build_absolute_uri(obj.photo.url) if obj.photo else (
+                            request.build_absolute_uri(obj.product.photo.url) if obj.product.photo else None
+                        ),
+                        'qr_code_svg': obj.qr_code_svg,
+                    })
+            elif t == 'global_extra':
+                obj = GlobalExtra.objects.filter(pk=iid, tenant=tenant).first()
+                if obj:
+                    if not obj.qr_code_svg:
+                        obj.generate_qr_code()
+                        GlobalExtra.objects.filter(pk=obj.pk).update(qr_code_svg=obj.qr_code_svg)
+                    resolved.append({
+                        'type': 'global_extra', 'id': obj.pk,
+                        'name': obj.name, 'description': obj.description,
+                        'price': str(obj.price),
+                        'photo': request.build_absolute_uri(obj.photo.url) if obj.photo else None,
+                        'qr_code_svg': obj.qr_code_svg,
+                    })
+
+        return Response({
+            'id': menu.pk,
+            'name': menu.name,
+            'items': resolved,
+            'banner': request.build_absolute_uri(tenant.banner.url) if tenant.banner else None,
+            'store_name': tenant.name,
+            'theme': tenant.theme,
+            'slug': tenant.slug,
+        })
 
 
 class PrintMenuRenderView(APIView):

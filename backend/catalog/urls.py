@@ -3,7 +3,7 @@ from .views import (
     MenuView, CategoryListView, CategoryDetailView,
     ProductListView, ProductDetailView, VariationDetailView, ExtraView,
     GlobalExtraListView, GlobalExtraDetailView,
-    PrintMenuListView, PrintMenuDetailView, PrintMenuRenderView,
+    PrintMenuListView, PrintMenuDetailView, PrintMenuRenderView, PublicMenuView,
 )
 
 urlpatterns = [
@@ -21,4 +21,5 @@ urlpatterns = [
     path('print-menus/', PrintMenuListView.as_view(), name='print-menu-list'),
     path('print-menus/<int:pk>/', PrintMenuDetailView.as_view(), name='print-menu-detail'),
     path('print-menus/<int:pk>/render/', PrintMenuRenderView.as_view(), name='print-menu-render'),
+    path('public-menu/', PublicMenuView.as_view(), name='public-menu'),
 ]

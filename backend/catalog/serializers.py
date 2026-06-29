@@ -68,5 +68,5 @@ class GlobalExtraSerializer(serializers.ModelSerializer):
 class PrintMenuSerializer(serializers.ModelSerializer):
     class Meta:
         model = PrintMenu
-        fields = ['id', 'name', 'size', 'items', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'size', 'items', 'is_default', 'is_web_facing', 'created_at', 'updated_at']
         read_only_fields = ['created_at', 'updated_at']

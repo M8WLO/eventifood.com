@@ -152,6 +152,8 @@ class PrintMenu(models.Model):
     size = models.CharField(max_length=4, choices=SIZE_CHOICES, default='a4')
     # List of {"type": "product"|"variation"|"global_extra", "id": int}
     items = models.JSONField(default=list)
+    is_default = models.BooleanField(default=False)
+    is_web_facing = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
