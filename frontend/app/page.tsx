@@ -1,6 +1,40 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import PricingSection from './(platform)/pricing-section'
+import PricingSection, { type Plan } from './(platform)/pricing-section'
+
+const FALLBACK_PLANS: Plan[] = [
+  {
+    id: 0, name: 'Starter', slug: 'starter', billing_model: 'payg', monthly_price: '0',
+    platform_fee_percent: '2.00', description: 'Core ordering — free to use',
+    features: [], feature_flags: [], is_highlighted: false, display_order: 0,
+  },
+  {
+    id: 1, name: 'Trader', slug: 'trader', billing_model: 'subscription', monthly_price: '19',
+    platform_fee_percent: '0.00', description: 'Everything you need to trade',
+    features: [], feature_flags: ['inventory', 'wastage', 'print_menus', 'wait_time'],
+    is_highlighted: true, display_order: 1,
+  },
+  {
+    id: 2, name: 'Pro', slug: 'pro', billing_model: 'subscription', monthly_price: '39',
+    platform_fee_percent: '0.00', description: 'Full platform for serious sellers',
+    features: [], feature_flags: ['inventory', 'wastage', 'print_menus', 'wait_time', 'events', 'analytics', 'staff'],
+    is_highlighted: false, display_order: 2,
+  },
+]
+
+async function fetchPlans(): Promise<Plan[]> {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    const res = await fetch(`${apiUrl}/api/subscriptions/plans/`, {
+      next: { revalidate: 300 },
+    })
+    if (!res.ok) return FALLBACK_PLANS
+    const data = await res.json()
+    return Array.isArray(data) && data.length > 0 ? data : FALLBACK_PLANS
+  } catch {
+    return FALLBACK_PLANS
+  }
+}
 
 const features = [
   {
@@ -356,7 +390,8 @@ function BuntingSVG({ className }: { className?: string }) {
   )
 }
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const plans = await fetchPlans()
   return (
     <div className="min-h-screen bg-white">
 
@@ -415,6 +450,7 @@ export default function LandingPage() {
               </a>
             </div>
             <p className="mt-6 text-sm text-purple-200">No credit card required. Up and running in 30 minutes.</p>
+            <p className="mt-2 text-xs text-purple-300">Some features available on premium tiers only.</p>
           </div>
         </div>
 
@@ -647,7 +683,7 @@ export default function LandingPage() {
             <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">Simple, honest pricing</h2>
             <p className="text-lg text-gray-500">Start free. Scale when you need to. No hidden fees.</p>
           </div>
-          <PricingSection />
+          <PricingSection plans={plans} />
         </div>
       </section>
 

@@ -2,29 +2,18 @@
 PayPal Subscriptions API v1 client.
 Used to collect recurring subscription fees from sellers on subscription-tier plans.
 
-Credentials from environment:
-  PAYPAL_CLIENT_ID      — same as HamStreamSite
-  PAYPAL_CLIENT_SECRET  — same as HamStreamSite
-  PAYPAL_ENV            — 'live' | 'sandbox' (default: 'sandbox')
+Credentials resolved dynamically per-call via sandbox_helpers so sandbox mode
+toggled in PlatformConfig takes effect without a server restart.
 """
-import os
 import requests
-
-_ENV    = os.environ.get('PAYPAL_ENV', 'sandbox').lower()
-_CID    = os.environ.get('PAYPAL_CLIENT_ID', '')
-_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', '')
-
-_BASE = (
-    'https://api-m.sandbox.paypal.com'
-    if _ENV == 'sandbox'
-    else 'https://api-m.paypal.com'
-)
+from payments.sandbox_helpers import get_paypal_credentials
 
 
 def _get_token() -> str:
+    cid, secret, base = get_paypal_credentials()
     r = requests.post(
-        f'{_BASE}/v1/oauth2/token',
-        auth=(_CID, _SECRET),
+        f'{base}/v1/oauth2/token',
+        auth=(cid, secret),
         data={'grant_type': 'client_credentials'},
         timeout=15,
     )
@@ -38,8 +27,9 @@ def create_subscription(paypal_plan_id: str, tenant_slug: str, return_url: str, 
     Returns dict with 'id' (subscription ID) and 'approval_url' (redirect the seller here).
     """
     token = _get_token()
+    _, _, base = get_paypal_credentials()
     r = requests.post(
-        f'{_BASE}/v1/billing/subscriptions',
+        f'{base}/v1/billing/subscriptions',
         headers={
             'Authorization': f'Bearer {token}',
             'Content-Type': 'application/json',
@@ -74,8 +64,9 @@ def create_subscription(paypal_plan_id: str, tenant_slug: str, return_url: str, 
 def get_subscription(subscription_id: str) -> dict:
     """Fetch current status of a PayPal subscription."""
     token = _get_token()
+    _, _, base = get_paypal_credentials()
     r = requests.get(
-        f'{_BASE}/v1/billing/subscriptions/{subscription_id}',
+        f'{base}/v1/billing/subscriptions/{subscription_id}',
         headers={'Authorization': f'Bearer {token}'},
         timeout=15,
     )
@@ -86,8 +77,9 @@ def get_subscription(subscription_id: str) -> dict:
 def cancel_subscription(subscription_id: str, reason: str = 'Cancelled by seller') -> None:
     """Cancel an active PayPal subscription."""
     token = _get_token()
+    _, _, base = get_paypal_credentials()
     r = requests.post(
-        f'{_BASE}/v1/billing/subscriptions/{subscription_id}/cancel',
+        f'{base}/v1/billing/subscriptions/{subscription_id}/cancel',
         headers={
             'Authorization': f'Bearer {token}',
             'Content-Type': 'application/json',

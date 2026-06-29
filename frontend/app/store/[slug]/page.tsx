@@ -116,6 +116,7 @@ function StorefrontContent() {
       sessionStorage.setItem(`ef_theme_${slug}`, t)
       sessionStorage.setItem(`ef_name_${slug}`, tenantRes.data.name || '')
       sessionStorage.setItem(`ef_payment_mode_${slug}`, tenantRes.data.payment_mode || 'payg')
+      sessionStorage.setItem(`ef_paypal_${slug}`, tenantRes.data.paypal_available ? '1' : '0')
       setExpanded(new Set())
     }).finally(() => setLoading(false))
   }, [slug])

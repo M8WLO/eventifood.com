@@ -1,19 +1,48 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useEffect, useState, useRef } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import api from '@/lib/api'
 
 interface TenantInfo {
   slug: string
   name: string
+  account_number: string
   is_active: boolean
   is_demo: boolean
   theme: string
+  banner: string | null
+  payment_mode: string
+  wait_time_enabled: boolean
+  order_number_mode: string
   created_at: string
   trial_expires_at: string | null
 }
+
+const THEMES = [
+  { value: 'default', label: 'Purple',  color: '#7c3aed' },
+  { value: 'sunset',  label: 'Sunset',  color: '#e11d48' },
+  { value: 'ocean',   label: 'Ocean',   color: '#0891b2' },
+  { value: 'forest',  label: 'Forest',  color: '#16a34a' },
+  { value: 'amber',   label: 'Amber',   color: '#d97706' },
+  { value: 'coral',   label: 'Coral',   color: '#ea580c' },
+  { value: 'ruby',    label: 'Ruby',    color: '#dc2626' },
+  { value: 'teal',    label: 'Teal',    color: '#0d9488' },
+  { value: 'indigo',  label: 'Indigo',  color: '#4f46e5' },
+  { value: 'navy',    label: 'Navy',    color: '#1d4ed8' },
+  { value: 'pink',    label: 'Pink',    color: '#db2777' },
+  { value: 'slate',   label: 'Slate',   color: '#475569' },
+]
+
+const KITCHEN_NAV_OPTIONS = [
+  { value: 'dashboard', label: 'Dashboard',   icon: '🏠', hint: 'Today\'s summary' },
+  { value: 'menu',      label: 'Menu editor', icon: '🍽️', hint: 'Edit products & categories' },
+  { value: 'inventory', label: 'Inventory',   icon: '📦', hint: 'Stock levels' },
+  { value: 'wastage',   label: 'Wastage',     icon: '🗑️', hint: 'Wastage log' },
+  { value: 'analytics', label: 'Analytics',   icon: '📊', hint: 'Sales & revenue' },
+  { value: 'settings',  label: 'Settings',    icon: '⚙️', hint: 'Store settings' },
+]
 
 interface Member {
   id: number
@@ -59,7 +88,7 @@ interface PlanOption {
   billing_model: string
 }
 
-const TABS = ['Overview', 'Users', 'Orders', 'Subscription'] as const
+const TABS = ['Overview', 'Settings', 'Users', 'Orders', 'Subscription'] as const
 type Tab = (typeof TABS)[number]
 
 const SUB_STATUSES = ['trialing', 'active', 'cancelled', 'past_due']
@@ -73,6 +102,7 @@ const STATUS_BADGE: Record<string, string> = {
 
 export default function TenantDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const slug = params.slug as string
 
   const [tab, setTab] = useState<Tab>('Overview')
@@ -106,6 +136,31 @@ export default function TenantDetailPage() {
   const [trialDate, setTrialDate] = useState('')
   const [trialSaving, setTrialSaving] = useState(false)
 
+  // Settings form — mirrors seller settings page
+  const [settingsForm, setSettingsForm] = useState({ name: '', theme: 'default' })
+  const [settingsSaving, setSettingsSaving] = useState(false)
+  const [settingsSaved, setSettingsSaved] = useState(false)
+  const [kitchenNav, setKitchenNav] = useState<string[]>([])
+  const [kitchenNavSaving, setKitchenNavSaving] = useState(false)
+  const [kitchenNavSaved, setKitchenNavSaved] = useState(false)
+  const [orderMode, setOrderMode] = useState<'daily' | 'total'>('daily')
+  const [orderModeSaving, setOrderModeSaving] = useState(false)
+  const [orderModeSaved, setOrderModeSaved] = useState(false)
+  const [waitTimeEnabled, setWaitTimeEnabled] = useState(false)
+  const [waitTimeSaving, setWaitTimeSaving] = useState(false)
+  const [waitTimeSaved, setWaitTimeSaved] = useState(false)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null)
+  const [logoCropY, setLogoCropY] = useState(50)
+  const [logoUploading, setLogoUploading] = useState(false)
+  const [logoSaved, setLogoSaved] = useState(false)
+  const logoImgRef = useRef<HTMLImageElement>(null)
+
+  // Delete
+  const [showDelete, setShowDelete] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleting, setDeleting] = useState(false)
+
   // Order search
   const [orderSearch, setOrderSearch] = useState('')
 
@@ -113,6 +168,10 @@ export default function TenantDetailPage() {
     api.get(`/api/tenants/admin/${slug}/`).then((r) => {
       setTenant(r.data)
       setTrialDate(r.data.trial_expires_at || '')
+      setSettingsForm({ name: r.data.name || '', theme: r.data.theme || 'default' })
+      setKitchenNav(r.data.kitchen_nav_items || [])
+      setOrderMode(r.data.order_number_mode || 'daily')
+      setWaitTimeEnabled(!!r.data.wait_time_enabled)
     })
     api.get(`/api/tenants/admin/${slug}/members/`).then((r) => setMembers(r.data))
     api.get(`/api/tenants/admin/${slug}/orders/`).then((r) => setOrders(r.data)).catch(() => {})
@@ -169,6 +228,120 @@ export default function TenantDetailPage() {
       flash(trialDate ? `Trial set — expires ${new Date(trialDate).toLocaleDateString('en-GB')}.` : 'Trial date cleared.')
     } finally {
       setTrialSaving(false)
+    }
+  }
+
+  const saveSettings = async () => {
+    setSettingsSaving(true)
+    try {
+      const { data } = await api.patch(`/api/tenants/admin/${slug}/`, settingsForm)
+      setTenant(data)
+      setSettingsSaved(true)
+      setTimeout(() => setSettingsSaved(false), 3000)
+    } finally {
+      setSettingsSaving(false)
+    }
+  }
+
+  const saveKitchenNav = async () => {
+    setKitchenNavSaving(true)
+    try {
+      const { data } = await api.patch(`/api/tenants/admin/${slug}/`, { kitchen_nav_items: kitchenNav })
+      setTenant(data)
+      setKitchenNavSaved(true)
+      setTimeout(() => setKitchenNavSaved(false), 3000)
+    } finally {
+      setKitchenNavSaving(false)
+    }
+  }
+
+  const saveOrderMode = async () => {
+    setOrderModeSaving(true)
+    try {
+      await api.patch(`/api/tenants/admin/${slug}/`, { order_number_mode: orderMode })
+      setOrderModeSaved(true)
+      setTimeout(() => setOrderModeSaved(false), 3000)
+    } finally {
+      setOrderModeSaving(false)
+    }
+  }
+
+  const saveWaitTime = async () => {
+    setWaitTimeSaving(true)
+    try {
+      await api.patch(`/api/tenants/admin/${slug}/`, { wait_time_enabled: waitTimeEnabled })
+      setWaitTimeSaved(true)
+      setTimeout(() => setWaitTimeSaved(false), 3000)
+    } finally {
+      setWaitTimeSaving(false)
+    }
+  }
+
+  const toggleKitchenNav = (value: string) => {
+    setKitchenNav((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    )
+  }
+
+  const onLogoFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setLogoFile(file)
+    setLogoCropY(50)
+    setLogoPreviewUrl(URL.createObjectURL(file))
+  }
+
+  const uploadLogo = async () => {
+    if (!logoFile || !logoImgRef.current) return
+    const img = logoImgRef.current
+    const CROP_W = 900, CROP_H = 400
+    const canvas = document.createElement('canvas')
+    canvas.width = CROP_W; canvas.height = CROP_H
+    const ctx = canvas.getContext('2d')!
+    const scale = Math.max(CROP_W / img.naturalWidth, CROP_H / img.naturalHeight)
+    const scaledW = img.naturalWidth * scale
+    const scaledH = img.naturalHeight * scale
+    const offsetX = (CROP_W - scaledW) / 2
+    const offsetY = (CROP_H - scaledH) * (logoCropY / 100)
+    ctx.drawImage(img, offsetX, offsetY, scaledW, scaledH)
+    canvas.toBlob(async (blob) => {
+      if (!blob) return
+      setLogoUploading(true)
+      try {
+        const fd = new FormData()
+        fd.append('banner', blob, 'logo.jpg')
+        const { data } = await api.patch(`/api/tenants/admin/${slug}/`, fd, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        setTenant(data)
+        setLogoFile(null)
+        setLogoPreviewUrl(null)
+        setLogoSaved(true)
+        setTimeout(() => setLogoSaved(false), 3000)
+      } finally {
+        setLogoUploading(false)
+      }
+    }, 'image/jpeg', 0.92)
+  }
+
+  const removeLogo = async () => {
+    const fd = new FormData()
+    fd.append('banner', '')
+    await api.patch(`/api/tenants/admin/${slug}/`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    setTenant((prev) => prev ? { ...prev, banner: null } : prev)
+    setLogoPreviewUrl(null)
+    setLogoFile(null)
+  }
+
+  const deleteTenant = async () => {
+    if (!tenant || deleteConfirm !== tenant.name) return
+    setDeleting(true)
+    try {
+      await api.delete(`/api/tenants/admin/${slug}/`, { data: { confirm_name: deleteConfirm } })
+      router.push('/superadmin')
+    } catch {
+      flash('Delete failed — check server logs.')
+      setDeleting(false)
     }
   }
 
@@ -246,15 +419,28 @@ export default function TenantDetailPage() {
           <p className="text-gray-400 text-sm mt-1">
             {tenant.slug} · Joined {new Date(tenant.created_at).toLocaleDateString('en-GB')}
           </p>
+          {tenant.account_number && (
+            <p className="text-xs font-mono text-brand-600 mt-1 bg-brand-50 inline-block px-2 py-0.5 rounded">
+              {tenant.account_number}
+            </p>
+          )}
         </div>
-        <a
-          href={`/store/${tenant.slug}`}
-          target="_blank"
-          rel="noreferrer"
-          className="text-sm text-brand-600 hover:underline"
-        >
-          View store ↗
-        </a>
+        <div className="flex items-center gap-3">
+          <a
+            href={`/store/${tenant.slug}`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-sm text-brand-600 hover:underline"
+          >
+            View store ↗
+          </a>
+          <button
+            onClick={() => { setShowDelete(true); setDeleteConfirm('') }}
+            className="text-sm text-red-600 hover:text-red-700 border border-red-200 hover:bg-red-50 px-3 py-1.5 rounded-lg font-medium transition-colors"
+          >
+            Delete account
+          </button>
+        </div>
       </div>
 
       {msg && (
@@ -287,6 +473,10 @@ export default function TenantDetailPage() {
               <div>
                 <p className="text-gray-400 mb-1">Store name</p>
                 <p className="font-medium">{tenant.name}</p>
+              </div>
+              <div>
+                <p className="text-gray-400 mb-1">Account number</p>
+                <p className="font-mono text-xs font-semibold text-brand-700">{tenant.account_number || '—'}</p>
               </div>
               <div>
                 <p className="text-gray-400 mb-1">Slug</p>
@@ -399,6 +589,218 @@ export default function TenantDetailPage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Settings */}
+      {tab === 'Settings' && (
+        <div className="space-y-4 max-w-lg">
+
+          {/* Store details */}
+          <div className="card space-y-5">
+            <h2 className="font-semibold text-gray-700">Store details</h2>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Store name</label>
+              <input
+                value={settingsForm.name}
+                onChange={(e) => setSettingsForm((p) => ({ ...p, name: e.target.value }))}
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Colour theme</label>
+              <div className="flex flex-wrap gap-2">
+                {THEMES.map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    title={t.label}
+                    onClick={() => setSettingsForm((p) => ({ ...p, theme: t.value }))}
+                    style={{ backgroundColor: t.color }}
+                    className={`w-8 h-8 rounded-full transition-all ${
+                      settingsForm.theme === t.value
+                        ? 'ring-2 ring-offset-2 ring-gray-600 scale-110'
+                        : 'hover:scale-105'
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-2">
+                {THEMES.find((t) => t.value === settingsForm.theme)?.label ?? 'Default'}
+              </p>
+            </div>
+            <button
+              onClick={saveSettings}
+              disabled={settingsSaving}
+              className="btn-primary"
+            >
+              {settingsSaving ? 'Saving…' : settingsSaved ? 'Saved ✓' : 'Save details'}
+            </button>
+          </div>
+
+          {/* Logo */}
+          <div className="card space-y-4">
+            <h2 className="font-semibold text-gray-700">Logo / banner</h2>
+            {(logoPreviewUrl || tenant.banner) && (
+              <div className="relative w-full rounded-xl overflow-hidden border border-gray-200 bg-gray-50" style={{ aspectRatio: '9/4' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  ref={logoImgRef}
+                  src={logoPreviewUrl || tenant.banner!}
+                  alt="Logo preview"
+                  className="w-full h-full object-cover"
+                  style={{ objectPosition: `center ${logoCropY}%` }}
+                />
+              </div>
+            )}
+            {logoPreviewUrl && (
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Crop position — drag to adjust vertical position
+                </label>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={logoCropY}
+                  onChange={(e) => setLogoCropY(Number(e.target.value))}
+                  className="w-full accent-brand-600"
+                />
+              </div>
+            )}
+            <div className="flex items-center gap-3">
+              <label className="btn-secondary cursor-pointer">
+                {logoPreviewUrl ? 'Change image' : 'Choose image'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={onLogoFilePicked}
+                />
+              </label>
+              {logoPreviewUrl && (
+                <button
+                  onClick={uploadLogo}
+                  disabled={logoUploading}
+                  className="btn-primary"
+                >
+                  {logoUploading ? 'Uploading…' : logoSaved ? 'Saved ✓' : 'Save logo'}
+                </button>
+              )}
+              {tenant.banner && !logoPreviewUrl && (
+                <button
+                  onClick={removeLogo}
+                  className="text-sm text-red-500 hover:text-red-700 underline"
+                >
+                  Remove logo
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-gray-400">Recommended: 900×400px (9:4 ratio). JPG or PNG.</p>
+          </div>
+
+          {/* Order counter */}
+          <div className="card space-y-4">
+            <div>
+              <h2 className="font-semibold text-gray-700">Order counter</h2>
+              <p className="text-sm text-gray-400 mt-0.5">Controls how orders are numbered on the kitchen board.</p>
+            </div>
+            <div className="space-y-3">
+              {(['daily', 'total'] as const).map((mode) => (
+                <label key={mode} className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="orderMode"
+                    value={mode}
+                    checked={orderMode === mode}
+                    onChange={() => setOrderMode(mode)}
+                    className="mt-0.5 accent-brand-600"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">
+                      {mode === 'daily' ? 'Daily counter' : 'Running total'}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {mode === 'daily'
+                        ? 'Resets to #1 each day — great for high-volume events'
+                        : 'Never resets — easy to reference any historic order'}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <button
+              onClick={saveOrderMode}
+              disabled={orderModeSaving}
+              className="btn-primary"
+            >
+              {orderModeSaving ? 'Saving…' : orderModeSaved ? 'Saved ✓' : 'Save'}
+            </button>
+          </div>
+
+          {/* Wait time */}
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold text-gray-700">Live wait time</h2>
+                <p className="text-sm text-gray-400 mt-0.5">Show an estimated wait time to customers placing orders.</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={waitTimeEnabled}
+                onClick={() => setWaitTimeEnabled((v) => !v)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${waitTimeEnabled ? 'bg-brand-600' : 'bg-gray-200'}`}
+              >
+                <span className="sr-only">Enable wait time</span>
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${waitTimeEnabled ? 'translate-x-6' : 'translate-x-1'}`}
+                />
+              </button>
+            </div>
+            <div className="mt-4">
+              <button
+                onClick={saveWaitTime}
+                disabled={waitTimeSaving}
+                className="btn-primary"
+              >
+                {waitTimeSaving ? 'Saving…' : waitTimeSaved ? 'Saved ✓' : 'Save'}
+              </button>
+            </div>
+          </div>
+
+          {/* Kitchen board nav */}
+          <div className="card space-y-4">
+            <div>
+              <h2 className="font-semibold text-gray-700">Kitchen board navigation</h2>
+              <p className="text-sm text-gray-400 mt-0.5">Choose which items appear in the kitchen board side menu.</p>
+            </div>
+            <div className="space-y-2">
+              {KITCHEN_NAV_OPTIONS.map((opt) => (
+                <label key={opt.value} className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-gray-50">
+                  <input
+                    type="checkbox"
+                    checked={kitchenNav.includes(opt.value)}
+                    onChange={() => toggleKitchenNav(opt.value)}
+                    className="w-4 h-4 accent-brand-600"
+                  />
+                  <span className="text-lg">{opt.icon}</span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{opt.label}</p>
+                    <p className="text-xs text-gray-400">{opt.hint}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <button
+              onClick={saveKitchenNav}
+              disabled={kitchenNavSaving}
+              className="btn-primary"
+            >
+              {kitchenNavSaving ? 'Saving…' : kitchenNavSaved ? 'Saved ✓' : 'Save navigation'}
+            </button>
+          </div>
+
         </div>
       )}
 
@@ -621,6 +1023,60 @@ export default function TenantDetailPage() {
               </button>
             </>
           )}
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {showDelete && tenant && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 text-lg flex-shrink-0">
+                ⚠
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Delete account</h3>
+                <p className="text-sm text-gray-500">This action cannot be undone.</p>
+              </div>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700 space-y-1">
+              <p className="font-semibold">The following will be permanently deleted:</p>
+              <ul className="list-disc list-inside space-y-0.5 text-red-600">
+                <li>All store data and settings</li>
+                <li>All orders and order history</li>
+                <li>All menu items and categories</li>
+                <li>All user memberships</li>
+                <li>Subscription records</li>
+              </ul>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Type <span className="font-bold text-gray-900">{tenant.name}</span> to confirm
+              </label>
+              <input
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                placeholder={tenant.name}
+                className="input-field"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDelete(false)}
+                className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteTenant}
+                disabled={deleteConfirm !== tenant.name || deleting}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors"
+              >
+                {deleting ? 'Deleting…' : 'Delete permanently'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

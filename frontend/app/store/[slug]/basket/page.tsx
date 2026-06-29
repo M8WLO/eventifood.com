@@ -37,8 +37,10 @@ export default function BasketPage() {
   const [theme, setTheme] = useState('default')
   const [isDemo, setIsDemo] = useState(false)
   const [paymentMode, setPaymentMode] = useState('payg')
+  const [paypalAvailable, setPaypalAvailable] = useState(false)
   const [form, setForm] = useState({ buyer_name: '', buyer_email: '', buyer_phone: '', notes: '' })
   const [placing, setPlacing] = useState(false)
+  const [placingPaypal, setPlacingPaypal] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Discount state
@@ -59,6 +61,7 @@ export default function BasketPage() {
     setTheme(t)
     setIsDemo(sessionStorage.getItem(`ef_demo_${slug}`) === '1')
     setPaymentMode(sessionStorage.getItem(`ef_payment_mode_${slug}`) || 'payg')
+    setPaypalAvailable(sessionStorage.getItem(`ef_paypal_${slug}`) === '1')
   }, [slug])
 
   const colors = THEME_COLORS[theme] || THEME_COLORS.default
@@ -146,6 +149,35 @@ export default function BasketPage() {
       setError(msg || 'Failed to place order. Please try again.')
     } finally {
       setPlacing(false)
+    }
+  }
+
+  const placeOrderPayPal = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (basket.length === 0) return
+    setError(null)
+    setPlacingPaypal(true)
+    api.defaults.headers.common['X-Tenant-Slug'] = slug
+    try {
+      const { data } = await api.post('/api/payments/paypal/create/', {
+        ...form,
+        discount_code: appliedDiscount?.code || '',
+        items: basket.map((i) => ({ variation_id: i.variationId, quantity: i.quantity, extras: i.extras.map(e => e.id) })),
+      })
+      // Track order number before redirect (in case redirect fails)
+      const lsKey = `ef_orders_${slug}`
+      const existing: string[] = JSON.parse(localStorage.getItem(lsKey) || '[]')
+      if (!existing.includes(data.order_number)) {
+        existing.push(data.order_number)
+        localStorage.setItem(lsKey, JSON.stringify(existing))
+      }
+      sessionStorage.removeItem('basket')
+      window.location.href = data.approval_url
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setError(msg || 'Failed to start PayPal checkout. Please try again.')
+    } finally {
+      setPlacingPaypal(false)
     }
   }
 
@@ -295,13 +327,32 @@ export default function BasketPage() {
                 </p>
               )}
               {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
-              <button type="submit" disabled={placing} style={{ backgroundColor: isDemo ? '#f97316' : colors.primary }} className="w-full py-3 text-base text-white font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50">
+              <button type="submit" disabled={placing || placingPaypal} style={{ backgroundColor: isDemo ? '#f97316' : colors.primary }} className="w-full py-3 text-base text-white font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50">
                 {placing
                   ? 'Placing order…'
                   : isDemo
                   ? `Place demo order · £${total.toFixed(2)}`
-                  : `Place order · £${total.toFixed(2)}`}
+                  : `Pay by card · £${total.toFixed(2)}`}
               </button>
+
+              {/* PayPal button — only for subscription tenants with PayPal configured */}
+              {!isDemo && paypalAvailable && (
+                <button
+                  type="button"
+                  onClick={placeOrderPayPal}
+                  disabled={placing || placingPaypal}
+                  className="w-full py-3 text-base font-semibold rounded-lg transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{ backgroundColor: '#FFC439', color: '#003087' }}
+                >
+                  {placingPaypal ? 'Redirecting to PayPal…' : (
+                    <>
+                      <span className="font-extrabold">Pay</span>
+                      <span style={{ color: '#009cde', fontWeight: 800 }}>Pal</span>
+                      <span>· £{total.toFixed(2)}</span>
+                    </>
+                  )}
+                </button>
+              )}
             </form>
           </>
         )}

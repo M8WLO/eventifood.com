@@ -26,6 +26,7 @@ class Tenant(models.Model):
     wait_time_enabled = models.BooleanField(default=False)
     is_demo = models.BooleanField(default=False)
     trial_expires_at = models.DateField(null=True, blank=True)
+    account_number = models.CharField(max_length=20, unique=True, blank=True, default='')
 
     class Meta:
         ordering = ['name']
@@ -44,6 +45,12 @@ class Tenant(models.Model):
             return self.subscription.status == 'active'
         except Exception:
             return False
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if not self.account_number:
+            self.account_number = f'EF-{self.pk:05d}'
+            Tenant.objects.filter(pk=self.pk).update(account_number=self.account_number)
 
     def generate_qr_code(self):
         """Generate SVG QR code pointing to https://{slug}.eventifood.com and store it."""

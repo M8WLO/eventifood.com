@@ -105,7 +105,7 @@ export default function PlansPage() {
       if (modal.id) {
         await api.patch(`/api/subscriptions/plans/${modal.id}/`, payload)
       } else {
-        await api.post('/api/subscriptions/plans/admin/', payload)
+        await api.post('/api/subscriptions/plans/', payload)
       }
       setModal(null)
       load()

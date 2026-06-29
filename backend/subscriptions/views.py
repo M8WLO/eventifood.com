@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny, BasePermission
 
-from .models import Subscription, Plan, TenantPlan
+from .models import Subscription, Plan, TenantPlan, PlatformFeatureOverride
 from .serializers import SubscriptionSerializer, PlanSerializer, AdminSubscriptionSerializer, TenantPlanSerializer
 
 
@@ -106,7 +106,7 @@ class PlanListView(APIView):
         return [IsSuperAdmin()]
 
     def get(self, request):
-        plans = Plan.objects.filter(is_active=True)
+        plans = Plan.objects.filter(is_active=True).order_by('display_order')
         return Response(PlanSerializer(plans, many=True).data)
 
     def post(self, request):
@@ -214,7 +214,16 @@ class TenantPlanView(APIView):
         if not tenant:
             return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
         obj = self._get_or_create(tenant)
-        return Response(TenantPlanSerializer(obj, context={'request': request}).data)
+        data = TenantPlanSerializer(obj, context={'request': request}).data
+        global_flags = list(
+            PlatformFeatureOverride.objects.filter(is_enabled=True).values_list('flag', flat=True)
+        )
+        if global_flags:
+            if data.get('plan'):
+                existing = list(data['plan'].get('feature_flags') or [])
+                data['plan']['feature_flags'] = list(set(existing + global_flags))
+            data['global_feature_flags'] = global_flags
+        return Response(data)
 
     def post(self, request):
         tenant = request.tenant
@@ -310,7 +319,7 @@ class PayPalCreateSubscriptionView(APIView):
         backend_url = os.environ.get('BACKEND_URL', request.build_absolute_uri('/').rstrip('/'))
 
         return_url = f'{backend_url}/api/subscriptions/paypal/return/?period={period}&plan_id={plan_id}'
-        cancel_url = f'{frontend_url}/seller/settings?paypal_cancelled=1'
+        cancel_url = f'https://{tenant.slug}.eventifood.com/seller/payment-portal?paypal_cancelled=1'
 
         try:
             result = paypal_client.create_subscription(
@@ -348,13 +357,13 @@ class PayPalReturnView(APIView):
         subscription_id = request.query_params.get('subscription_id')
         if not subscription_id:
             frontend_url = os.environ.get('FRONTEND_URL', 'https://eventifood.com')
-            return HttpResponseRedirect(f'{frontend_url}/seller/settings?paypal_error=missing_id')
+            return HttpResponseRedirect(f'{frontend_url}/seller/payment-portal?paypal_error=missing_id')
 
         # Look up the subscription by PayPal ID
         sub = Subscription.objects.filter(paypal_subscription_id=subscription_id).first()
         if not sub:
             frontend_url = os.environ.get('FRONTEND_URL', 'https://eventifood.com')
-            return HttpResponseRedirect(f'{frontend_url}/seller/settings?paypal_error=not_found')
+            return HttpResponseRedirect(f'{frontend_url}/seller/payment-portal?paypal_error=not_found')
 
         try:
             pp_data = paypal_client.get_subscription(subscription_id)
@@ -363,9 +372,8 @@ class PayPalReturnView(APIView):
             pp_status = ''
 
         tenant = sub.tenant
-        frontend_url = os.environ.get('FRONTEND_URL', 'https://eventifood.com')
-        # Seller settings is on their subdomain
-        seller_settings_url = f'https://{tenant.slug}.eventifood.com/seller/settings'
+        # Return to the seller's payment portal on their subdomain
+        portal_url = f'https://{tenant.slug}.eventifood.com/seller/payment-portal'
 
         if pp_status == 'ACTIVE':
             sub.status = 'active'
@@ -375,16 +383,16 @@ class PayPalReturnView(APIView):
             if sub.plan_tier:
                 tp, _ = TenantPlan.objects.get_or_create(tenant=tenant)
                 tp.set_plan(sub.plan_tier)
-            return HttpResponseRedirect(f'{seller_settings_url}?paypal_success=1')
+            return HttpResponseRedirect(f'{portal_url}?paypal_success=1')
 
         # APPROVAL_PENDING → PayPal sometimes redirects before fully activating.
         # Store and let webhook do the final activation.
         if pp_status in ('APPROVAL_PENDING', 'APPROVED'):
             sub.status = 'trialing'
             sub.save(update_fields=['status'])
-            return HttpResponseRedirect(f'{seller_settings_url}?paypal_pending=1')
+            return HttpResponseRedirect(f'{portal_url}?paypal_pending=1')
 
-        return HttpResponseRedirect(f'{seller_settings_url}?paypal_error=status_{pp_status.lower()}')
+        return HttpResponseRedirect(f'{portal_url}?paypal_error=status_{pp_status.lower()}')
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -433,6 +441,29 @@ class PayPalWebhookView(APIView):
             sub.save(update_fields=['status'])
 
         return Response({'received': True})
+
+
+ALL_FEATURE_FLAGS = [
+    'print_menus', 'inventory', 'wastage', 'analytics',
+    'events', 'discounts', 'wait_time', 'staff', 'sms',
+]
+
+
+class PlatformFeatureOverrideView(APIView):
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request):
+        overrides = {f.flag: f.is_enabled for f in PlatformFeatureOverride.objects.all()}
+        return Response({flag: overrides.get(flag, False) for flag in ALL_FEATURE_FLAGS})
+
+    def patch(self, request):
+        for flag, enabled in request.data.items():
+            if flag in ALL_FEATURE_FLAGS:
+                PlatformFeatureOverride.objects.update_or_create(
+                    flag=flag, defaults={'is_enabled': bool(enabled)}
+                )
+        overrides = {f.flag: f.is_enabled for f in PlatformFeatureOverride.objects.all()}
+        return Response({flag: overrides.get(flag, False) for flag in ALL_FEATURE_FLAGS})
 
 
 class AdminSubscriptionView(APIView):

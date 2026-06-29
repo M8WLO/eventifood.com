@@ -25,8 +25,21 @@ interface PlatformStats {
 
 interface PlatformConfig {
   mfa_required: boolean
+  sandbox_mode: boolean
   updated_at: string
 }
+
+const ALL_FLAGS = [
+  { key: 'print_menus', label: 'Print menus',          hint: 'Sellers can generate printable menu PDFs' },
+  { key: 'inventory',   label: 'Inventory management', hint: 'Stock level tracking per product' },
+  { key: 'wastage',     label: 'Wastage tracking',     hint: 'Log and report on product waste' },
+  { key: 'analytics',   label: 'Sales analytics & P&L',hint: 'Revenue, cost, and profit dashboards' },
+  { key: 'events',      label: 'Events',               hint: 'Event-specific pricing presets' },
+  { key: 'discounts',   label: 'Discounts',            hint: 'Discount codes and promotional pricing' },
+  { key: 'wait_time',   label: 'Live wait time',       hint: 'Show estimated wait banner to customers' },
+  { key: 'staff',       label: 'Staff cost tracking',  hint: 'Log staff hours and costs against revenue' },
+  { key: 'sms',         label: 'SMS notifications',    hint: 'Send SMS alerts to customers on order ready' },
+]
 
 const SUB_BADGE: Record<string, string> = {
   active:    'bg-green-50 text-green-700',
@@ -44,6 +57,17 @@ export default function SuperAdminPage() {
   const [reseqRunning, setReseqRunning] = useState(false)
   const [platformConfig, setPlatformConfig] = useState<PlatformConfig | null>(null)
   const [mfaSaving, setMfaSaving] = useState(false)
+  const [featureOverrides, setFeatureOverrides] = useState<Record<string, boolean>>({})
+  const [featureOverrideSaving, setFeatureOverrideSaving] = useState(false)
+  const [copyFrom, setCopyFrom] = useState('')
+  const [copyTo, setCopyTo] = useState('')
+  const [copyRunning, setCopyRunning] = useState(false)
+  const [copyResult, setCopyResult] = useState<string | null>(null)
+  const [orphanedUsers, setOrphanedUsers] = useState<{id: number, email: string, full_name: string, email_verified: boolean, date_joined: string}[]>([])
+  const [orphanDeleting, setOrphanDeleting] = useState<number | null>(null)
+  const [deleteEmail, setDeleteEmail] = useState('')
+  const [deleteUserMsg, setDeleteUserMsg] = useState<string | null>(null)
+  const [deleteUserRunning, setDeleteUserRunning] = useState(false)
 
   const resequenceAll = async () => {
     if (!confirm('Resequence daily order numbers across all tenants? This fixes any duplicate #0001s for the last 18 hours of orders.')) return
@@ -60,6 +84,64 @@ export default function SuperAdminPage() {
     }
   }
 
+  const toggleFeatureOverride = async (flag: string, value: boolean) => {
+    const updated = { ...featureOverrides, [flag]: value }
+    setFeatureOverrides(updated)
+    setFeatureOverrideSaving(true)
+    try {
+      const r = await api.patch('/api/subscriptions/platform-features/', { [flag]: value })
+      setFeatureOverrides(r.data)
+    } finally {
+      setFeatureOverrideSaving(false)
+    }
+  }
+
+  const deleteUserByEmail = async () => {
+    if (!deleteEmail) return
+    if (!confirm(`Permanently delete user account for ${deleteEmail}? This cannot be undone.`)) return
+    setDeleteUserRunning(true)
+    setDeleteUserMsg(null)
+    try {
+      const r = await api.delete('/api/auth/admin/orphaned-users/', { data: { email: deleteEmail } })
+      setDeleteUserMsg(r.data.detail)
+      setDeleteEmail('')
+      // refresh orphan list
+      api.get('/api/auth/admin/orphaned-users/').then(r => setOrphanedUsers(r.data)).catch(() => {})
+    } catch (e: any) {
+      setDeleteUserMsg(`Error: ${e?.response?.data?.detail || 'Failed'}`)
+    } finally {
+      setDeleteUserRunning(false)
+      setTimeout(() => setDeleteUserMsg(null), 6000)
+    }
+  }
+
+  const deleteOrphan = async (userId: number) => {
+    if (!confirm('Delete this user permanently?')) return
+    setOrphanDeleting(userId)
+    try {
+      await api.delete('/api/auth/admin/orphaned-users/', { data: { user_id: userId } })
+      setOrphanedUsers(prev => prev.filter(u => u.id !== userId))
+    } finally {
+      setOrphanDeleting(null)
+    }
+  }
+
+  const copyTenant = async () => {
+    if (!copyFrom || !copyTo) return
+    if (!confirm(`Copy ALL data from ${copyFrom} → ${copyTo}? This will overwrite the destination tenant's catalog, settings and orders.`)) return
+    setCopyRunning(true)
+    setCopyResult(null)
+    try {
+      const r = await api.post('/api/tenants/admin/copy/', { from_email: copyFrom, to_email: copyTo, copy_orders: true })
+      const s = r.data.stats
+      setCopyResult(`Done: ${s.categories} categories, ${s.products} products, ${s.variations} variations, ${s.orders} orders copied.`)
+    } catch (e: any) {
+      setCopyResult(`Error: ${e?.response?.data?.detail || 'Copy failed — check backend logs.'}`)
+    } finally {
+      setCopyRunning(false)
+    }
+  }
+
   const toggleMfa = async (value: boolean) => {
     setMfaSaving(true)
     try {
@@ -67,6 +149,18 @@ export default function SuperAdminPage() {
       setPlatformConfig(r.data)
     } finally {
       setMfaSaving(false)
+    }
+  }
+
+  const [sandboxSaving, setSandboxSaving] = useState(false)
+  const toggleSandbox = async (value: boolean) => {
+    if (value && !confirm('Enable payment sandbox mode? All payment providers will use test/sandbox credentials. Do NOT enable this on production with real sellers.')) return
+    setSandboxSaving(true)
+    try {
+      const r = await api.patch('/api/auth/admin/platform-config/', { sandbox_mode: value })
+      setPlatformConfig(r.data)
+    } finally {
+      setSandboxSaving(false)
     }
   }
 
@@ -79,6 +173,12 @@ export default function SuperAdminPage() {
       .catch(() => {})
     api.get('/api/auth/admin/platform-config/')
       .then((r) => setPlatformConfig(r.data))
+      .catch(() => {})
+    api.get('/api/subscriptions/platform-features/')
+      .then((r) => setFeatureOverrides(r.data))
+      .catch(() => {})
+    api.get('/api/auth/admin/orphaned-users/')
+      .then((r) => setOrphanedUsers(r.data))
       .catch(() => {})
   }, [])
 
@@ -104,6 +204,17 @@ export default function SuperAdminPage() {
           </button>
         </div>
       </div>
+
+      {/* Sandbox banner — shown prominently when active */}
+      {platformConfig?.sandbox_mode && (
+        <div className="rounded-xl border-2 border-amber-400 bg-amber-50 px-4 py-3 flex items-center gap-3">
+          <span className="text-2xl">🧪</span>
+          <div>
+            <p className="font-bold text-amber-900 text-sm">Payment sandbox mode is ON</p>
+            <p className="text-xs text-amber-700 mt-0.5">All payment providers are using test credentials. No real money is moving. Turn this off before going live.</p>
+          </div>
+        </div>
+      )}
 
       {/* Platform settings */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -136,6 +247,149 @@ export default function SuperAdminPage() {
               </span>
             </p>
           )}
+        </div>
+
+        <div className={`card border-2 ${platformConfig?.sandbox_mode ? 'border-amber-400 bg-amber-50' : 'border-transparent'}`}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className={`font-semibold ${platformConfig?.sandbox_mode ? 'text-amber-900' : 'text-gray-800'}`}>
+                🧪 Payment sandbox mode
+              </h2>
+              <p className={`text-sm mt-0.5 ${platformConfig?.sandbox_mode ? 'text-amber-700' : 'text-gray-500'}`}>
+                {platformConfig?.sandbox_mode
+                  ? 'ACTIVE — Stripe, PayPal, GoCardless all using test credentials.'
+                  : 'Routes all payment providers to their sandbox/test environments.'}
+              </p>
+            </div>
+            <button
+              onClick={() => platformConfig && toggleSandbox(!platformConfig.sandbox_mode)}
+              disabled={sandboxSaving || !platformConfig}
+              className={`relative shrink-0 w-11 h-6 rounded-full transition-colors disabled:opacity-50 ${
+                platformConfig?.sandbox_mode ? 'bg-amber-500' : 'bg-gray-200'
+              }`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                platformConfig?.sandbox_mode ? 'translate-x-5' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 mt-3">
+            Status: <span className={`font-medium ${platformConfig?.sandbox_mode ? 'text-amber-600' : 'text-gray-500'}`}>
+              {platformConfig?.sandbox_mode ? 'Sandbox (test mode)' : 'Live'}
+            </span>
+          </p>
+        </div>
+      </div>
+
+      {/* Copy tenant data */}
+      <div className="card space-y-4">
+        <div>
+          <h2 className="font-semibold text-gray-800">Copy tenant data</h2>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Copy all catalog (categories, products, photos), settings and orders from one account to another. Overwrites the destination.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="flex-1 min-w-48">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Copy FROM (owner email)</label>
+            <input value={copyFrom} onChange={e => setCopyFrom(e.target.value)} placeholder="source@example.com" className="input-field" />
+          </div>
+          <div className="flex-1 min-w-48">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Copy TO (owner email)</label>
+            <input value={copyTo} onChange={e => setCopyTo(e.target.value)} placeholder="dest@example.com" className="input-field" />
+          </div>
+          <button
+            onClick={copyTenant}
+            disabled={copyRunning || !copyFrom || !copyTo}
+            className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 shrink-0"
+          >
+            {copyRunning ? 'Copying…' : 'Copy →'}
+          </button>
+        </div>
+        {copyResult && (
+          <p className={`text-sm font-medium ${copyResult.startsWith('Error') ? 'text-red-600' : 'text-green-700'}`}>
+            {copyResult}
+          </p>
+        )}
+      </div>
+
+      {/* Delete user by email */}
+      <div className="card space-y-4">
+        <div>
+          <h2 className="font-semibold text-gray-800">Delete user account</h2>
+          <p className="text-sm text-gray-500 mt-0.5">Remove a stuck or orphaned user account by email so the address can be reused. Does not delete their tenant.</p>
+        </div>
+        <div className="flex gap-3 items-end">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Email address</label>
+            <input value={deleteEmail} onChange={e => setDeleteEmail(e.target.value)} placeholder="user@example.com" className="input-field" type="email" />
+          </div>
+          <button
+            onClick={deleteUserByEmail}
+            disabled={deleteUserRunning || !deleteEmail}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 shrink-0"
+          >
+            {deleteUserRunning ? 'Deleting…' : 'Delete user'}
+          </button>
+        </div>
+        {deleteUserMsg && (
+          <p className={`text-sm font-medium ${deleteUserMsg.startsWith('Error') ? 'text-red-600' : 'text-green-700'}`}>
+            {deleteUserMsg}
+          </p>
+        )}
+      </div>
+
+      {/* Orphaned users — registered but no tenant */}
+      {orphanedUsers.length > 0 && (
+        <div className="card space-y-3 border-orange-100">
+          <div>
+            <h2 className="font-semibold text-gray-800">Orphaned accounts</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Users with no store — typically unverified or failed registrations. Safe to delete so the email can be reused.</p>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {orphanedUsers.map(u => (
+              <div key={u.id} className="flex items-center justify-between py-2">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{u.email}</p>
+                  <p className="text-xs text-gray-400">{u.full_name} · joined {new Date(u.date_joined).toLocaleDateString('en-GB')} · {u.email_verified ? 'verified' : <span className="text-orange-500">unverified</span>}</p>
+                </div>
+                <button
+                  onClick={() => deleteOrphan(u.id)}
+                  disabled={orphanDeleting === u.id}
+                  className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
+                >
+                  {orphanDeleting === u.id ? 'Deleting…' : 'Delete'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Enable for all — feature overrides */}
+      <div className="card space-y-4">
+        <div>
+          <h2 className="font-semibold text-gray-800">Enable for all</h2>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Tick any feature to unlock it for every tenant regardless of their plan — useful for platform-wide trials.
+            {featureOverrideSaving && <span className="ml-2 text-brand-500 font-medium">Saving…</span>}
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+          {ALL_FLAGS.map((f) => (
+            <label key={f.key} className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={!!featureOverrides[f.key]}
+                onChange={(e) => toggleFeatureOverride(f.key, e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-brand-600 shrink-0"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-800 group-hover:text-gray-900">{f.label}</p>
+                <p className="text-xs text-gray-400">{f.hint}</p>
+              </div>
+            </label>
+          ))}
         </div>
       </div>
 

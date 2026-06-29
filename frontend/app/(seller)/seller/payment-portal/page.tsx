@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import api from '@/lib/api'
 import { Tooltip } from '@/components/Tooltip'
 
 interface PaymentStatus {
+  sandbox_mode: boolean
   payment_mode: 'payg' | 'own'
   stripe_account_id: string
   stripe_onboarding_complete: boolean
@@ -47,6 +49,9 @@ interface TenantPlanData {
   plan: Plan | null
   can_change: boolean
   days_until_change: number
+  next_change_allowed_at: string | null
+  subscription_next_billing_date: string | null
+  subscription_billing_cycle: string | null
 }
 
 function StatusBadge({ ok, partial, label }: { ok: boolean; partial?: boolean; label: string }) {
@@ -56,13 +61,17 @@ function StatusBadge({ ok, partial, label }: { ok: boolean; partial?: boolean; l
 }
 
 export default function PaymentPortalPage() {
+  const searchParams = useSearchParams()
   const [status, setStatus] = useState<PaymentStatus | null>(null)
   const [tenantPlan, setTenantPlan] = useState<TenantPlanData | null>(null)
   const [plans, setPlans] = useState<Plan[]>([])
-  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null)
-  const [planSaving, setPlanSaving] = useState(false)
-  const [planSaved, setPlanSaved] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [stripeModal, setStripeModal] = useState<{ planId: number; planName: string } | null>(null)
+
+  const switchedParam = searchParams.get('switched')
+  const paypalSuccess = searchParams.get('paypal_success')
+  const paypalPending = searchParams.get('paypal_pending')
+  const paypalError = searchParams.get('paypal_error')
 
   useEffect(() => {
     Promise.all([
@@ -71,35 +80,16 @@ export default function PaymentPortalPage() {
       api.get('/api/subscriptions/plans/').catch(() => ({ data: [] })),
     ]).then(([statusRes, planRes, plansRes]) => {
       setStatus(statusRes.data)
-      if (planRes.data) {
-        setTenantPlan(planRes.data)
-        setSelectedPlanId(planRes.data.plan?.id ?? null)
-      }
+      if (planRes.data) setTenantPlan(planRes.data)
       setPlans(plansRes.data || [])
     }).finally(() => setLoading(false))
   }, [])
-
-  const savePlan = async () => {
-    if (!selectedPlanId) return
-    setPlanSaving(true)
-    try {
-      const [planRes, statusRes] = await Promise.all([
-        api.post('/api/subscriptions/my-plan/', { plan_id: selectedPlanId }),
-        api.get('/api/payments/status/'),
-      ])
-      setTenantPlan(planRes.data)
-      setStatus(statusRes.data)
-      setPlanSaved(true)
-      setTimeout(() => setPlanSaved(false), 3000)
-    } finally {
-      setPlanSaving(false)
-    }
-  }
 
   if (loading) return <div className="p-8 text-gray-400">Loading payment portal…</div>
   if (!status) return <div className="p-8 text-red-500">Failed to load payment settings.</div>
 
   const isPayg = status.payment_mode === 'payg'
+  const visiblePlans = plans
 
   return (
     <div className="p-8 max-w-2xl mx-auto space-y-8">
@@ -110,7 +100,46 @@ export default function PaymentPortalPage() {
         </p>
       </div>
 
+      {/* Sandbox mode banner */}
+      {status.sandbox_mode && (
+        <div className="rounded-xl border-2 border-amber-400 bg-amber-50 px-4 py-3 flex items-center gap-3">
+          <span className="text-2xl shrink-0">🧪</span>
+          <div>
+            <p className="font-bold text-amber-900 text-sm">Test / sandbox mode active</p>
+            <p className="text-xs text-amber-700 mt-0.5">All payments are using test credentials — no real money will move. Safe to try every flow.</p>
+          </div>
+        </div>
+      )}
+
       {/* ── Plan ─────────────────────────────────────────────────── */}
+      {/* ── Plan switch success / PayPal return banners ─────── */}
+      {(switchedParam || paypalSuccess || paypalPending || paypalError) && (
+        <div className={`rounded-xl px-4 py-3 text-sm flex items-start gap-3 ${
+          paypalError ? 'bg-red-50 border border-red-200 text-red-800'
+          : paypalPending ? 'bg-amber-50 border border-amber-200 text-amber-800'
+          : 'bg-green-50 border border-green-200 text-green-800'
+        }`}>
+          <span className="text-xl shrink-0">
+            {paypalError ? '❌' : paypalPending ? '⏳' : '✅'}
+          </span>
+          <div>
+            {paypalError && <p className="font-semibold">PayPal error — {paypalError}</p>}
+            {paypalPending && (
+              <>
+                <p className="font-semibold">PayPal authorisation pending</p>
+                <p className="text-xs mt-0.5">PayPal will confirm the subscription shortly. Your plan will activate automatically.</p>
+              </>
+            )}
+            {(paypalSuccess || switchedParam) && (
+              <>
+                <p className="font-semibold">Plan activated successfully</p>
+                <p className="text-xs mt-0.5">Your plan is now active. Payment is set up and ready.</p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="card space-y-4">
         <h2 className="font-semibold text-gray-700">Your plan</h2>
 
@@ -136,7 +165,7 @@ export default function PaymentPortalPage() {
           ) : (
             <>
               <p className="font-semibold text-brand-800">No plan selected</p>
-              <p className="text-xs text-brand-600 mt-0.5">Choose a plan below to unlock features.</p>
+              <p className="text-xs text-brand-600 mt-0.5">Choose a plan below to get started.</p>
             </>
           )}
         </div>
@@ -148,52 +177,90 @@ export default function PaymentPortalPage() {
           </div>
         )}
 
-        {plans.length > 0 && (
+        {visiblePlans.length > 0 && (
           <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Switch plan</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">
+              {tenantPlan?.plan ? 'Switch plan' : 'Choose a plan'}
+            </h3>
+
+            {/* 30-day lock notice */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3 text-xs text-amber-800">
+              <span className="font-semibold">⚠ 30-day lock:</span>{' '}
+              {tenantPlan?.plan
+                ? 'Once you switch to a new plan, you will not be able to change it again for 30 days.'
+                : 'Once you select a plan, you will not be able to change it for 30 days.'}
+            </div>
+
             <div className="space-y-2">
-              {plans.map((plan) => (
-                <label
-                  key={plan.id}
-                  className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedPlanId === plan.id ? 'border-brand-500 bg-brand-50' : 'border-gray-100 hover:border-gray-200'}`}
-                >
-                  <input
-                    type="radio"
-                    name="plan"
-                    checked={selectedPlanId === plan.id}
-                    onChange={() => setSelectedPlanId(plan.id)}
-                    className="mt-1"
-                    disabled={!tenantPlan?.can_change}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-gray-900">{plan.name}</span>
-                      {plan.is_highlighted && (
-                        <span className="text-xs bg-brand-100 text-brand-700 px-1.5 py-0.5 rounded font-medium">Popular</span>
+              {visiblePlans.map((plan) => {
+                const isCurrent = tenantPlan?.plan?.id === plan.id
+                const hasAnyPlan = !!tenantPlan?.plan
+                const canAct = tenantPlan?.can_change !== false && !isCurrent
+                const isAnnualPlan = plan.billing_model !== 'payg' && Number(plan.annual_price) > 0
+                const currentIsAnnual = hasAnyPlan && tenantPlan?.subscription_billing_cycle === 'annual'
+                const nextBillingDate = tenantPlan?.subscription_next_billing_date
+                  ? new Date(tenantPlan.subscription_next_billing_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+                  : null
+
+                // Annual-plan timing note
+                let annualNote: string | null = null
+                if (!isCurrent && isAnnualPlan) {
+                  if (!hasAnyPlan) {
+                    annualNote = 'Annual commitment — this plan runs for 12 months from the date you activate it.'
+                  } else if (currentIsAnnual && nextBillingDate) {
+                    annualNote = `Annual switch — this will not take effect until your current annual plan expires on ${nextBillingDate}.`
+                  } else if (currentIsAnnual) {
+                    annualNote = 'Annual switch — this will not take effect until your current annual plan expires.'
+                  }
+                }
+                if (!isCurrent && !isAnnualPlan && currentIsAnnual && nextBillingDate) {
+                  annualNote = `Switch will not take effect until your current annual plan expires on ${nextBillingDate}.`
+                }
+
+                return (
+                  <div
+                    key={plan.id}
+                    className={`p-3 rounded-xl border-2 ${isCurrent ? 'border-brand-500 bg-brand-50' : 'border-gray-100'}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-gray-900">{plan.name}</span>
+                          {isCurrent && <span className="text-xs bg-brand-100 text-brand-700 px-1.5 py-0.5 rounded font-medium">Current</span>}
+                          {plan.is_highlighted && !isCurrent && <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">Popular</span>}
+                        </div>
+                        {plan.description && <p className="text-xs text-gray-500 mt-0.5">{plan.description}</p>}
+                        <p className="text-xs text-gray-500 mt-0.5">{planPriceLine(plan)}</p>
+                        {annualNote && (
+                          <p className="text-xs text-amber-700 mt-1 italic">{annualNote}</p>
+                        )}
+                      </div>
+                      {!isCurrent && (
+                        canAct ? (
+                          plan.billing_model === 'payg' && !status?.stripe_onboarding_complete ? (
+                            <button
+                              onClick={() => setStripeModal({ planId: plan.id, planName: plan.name })}
+                              className="btn-secondary text-xs px-3 py-1.5 shrink-0"
+                            >
+                              {hasAnyPlan ? 'Switch →' : 'Select →'}
+                            </button>
+                          ) : (
+                            <Link
+                              href={`/seller/payment-portal/switch/${plan.id}`}
+                              className="btn-secondary text-xs px-3 py-1.5 shrink-0"
+                            >
+                              {hasAnyPlan ? 'Switch →' : 'Select →'}
+                            </Link>
+                          )
+                        ) : (
+                          <span className="text-xs text-gray-400 shrink-0 mt-1">Locked</span>
+                        )
                       )}
                     </div>
-                    {plan.description && <p className="text-xs text-gray-500 mt-0.5">{plan.description}</p>}
-                    <p className="text-xs text-gray-500 mt-0.5">{planPriceLine(plan)}</p>
-                    {plan.features?.length > 0 && (
-                      <ul className="mt-1 space-y-0.5">
-                        {plan.features.map((f, i) => (
-                          <li key={i} className="text-xs text-gray-500 flex items-center gap-1">
-                            <span className="text-green-500">✓</span> {f}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
                   </div>
-                </label>
-              ))}
+                )
+              })}
             </div>
-            <button
-              onClick={savePlan}
-              disabled={planSaving || selectedPlanId === tenantPlan?.plan?.id || !tenantPlan?.can_change}
-              className="btn-primary mt-3 text-sm disabled:opacity-30"
-            >
-              {planSaving ? 'Saving…' : planSaved ? 'Saved ✓' : 'Switch plan'}
-            </button>
           </div>
         )}
       </div>
@@ -344,6 +411,46 @@ export default function PaymentPortalPage() {
                 <Link href="/seller/payment-portal/gocardless" className="btn-secondary text-sm">Configure</Link>
                 {!status.gocardless_enabled && <span className="text-xs text-gray-400">~10 min</span>}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stripe required modal for PAYG plans */}
+      {stripeModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-[#635bff] rounded-xl flex items-center justify-center shrink-0">
+                <span className="text-white font-bold text-sm">S</span>
+              </div>
+              <div>
+                <h2 className="font-bold text-gray-900 text-lg">Stripe setup required</h2>
+                <p className="text-sm text-gray-500 mt-0.5">{stripeModal.planName}</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-700">
+              Pay As You Go plans use <strong>Stripe Connect</strong> to process customer payments. The platform
+              automatically collects its fee from each transaction, so your Stripe account must be connected
+              before you can activate a PAYG plan.
+            </p>
+            <p className="text-sm text-gray-700">
+              Setup takes around <strong>5 minutes</strong>. Once connected, come back here to select your plan.
+            </p>
+            <div className="flex gap-3 pt-1">
+              <Link
+                href="/seller/settings/payments/stripe"
+                className="btn-primary flex-1 text-center text-sm"
+                onClick={() => setStripeModal(null)}
+              >
+                Set up Stripe →
+              </Link>
+              <button
+                onClick={() => setStripeModal(null)}
+                className="btn-secondary flex-1 text-sm"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

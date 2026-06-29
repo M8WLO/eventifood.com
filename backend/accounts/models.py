@@ -28,6 +28,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_superadmin = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
     mfa_enabled = models.BooleanField(default=True)
+    email_verified = models.BooleanField(default=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['full_name']
@@ -57,6 +58,7 @@ class TenantMembership(models.Model):
 
 class PlatformConfig(models.Model):
     mfa_required = models.BooleanField(default=True)
+    sandbox_mode = models.BooleanField(default=False)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

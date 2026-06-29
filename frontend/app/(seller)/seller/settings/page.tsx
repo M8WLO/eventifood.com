@@ -53,8 +53,17 @@ function useLocalStorage(key: string, defaultValue: string): [string, (v: string
   return [value, set]
 }
 
+function ProBadge() {
+  return (
+    <span className="ml-1 text-[9px] font-bold bg-brand-500 text-white px-1.5 py-px rounded leading-tight align-middle">
+      Pro
+    </span>
+  )
+}
+
 export default function SettingsPage() {
   const [tenant, setTenant] = useState<Tenant | null>(null)
+  const [featureFlags, setFeatureFlags] = useState<string[]>([])
   const [form, setForm] = useState({ name: '', theme: 'default' })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -76,6 +85,8 @@ export default function SettingsPage() {
   const [logoSaved, setLogoSaved] = useState(false)
   const logoImgRef = useRef<HTMLImageElement>(null)
 
+  const hasFlag = (flag: string) => featureFlags.includes(flag)
+
   useEffect(() => {
     api.get('/api/tenants/me/').then((r) => {
       setTenant(r.data)
@@ -84,6 +95,13 @@ export default function SettingsPage() {
       setOrderMode(r.data.order_number_mode || 'daily')
       setWaitTimeEnabled(!!r.data.wait_time_enabled)
     })
+    api.get('/api/subscriptions/my-plan/')
+      .then((r) => {
+        const planFlags: string[] = r.data?.plan?.feature_flags || []
+        const globalFlags: string[] = r.data?.global_feature_flags || []
+        setFeatureFlags(Array.from(new Set([...planFlags, ...globalFlags])))
+      })
+      .catch(() => {})
   }, [])
 
   const save = async () => {
@@ -357,9 +375,9 @@ export default function SettingsPage() {
       </div>
 
       {/* Live wait time */}
-      <div className="card space-y-4">
+      <div className={`card space-y-4 ${!hasFlag('wait_time') ? 'opacity-50 pointer-events-none select-none' : ''}`}>
         <h2 className="font-semibold text-gray-700 flex items-center gap-1.5">
-          Live wait time
+          Live wait time{!hasFlag('wait_time') && <ProBadge />}
           <Tooltip text="Shows customers a wait estimate on your ordering page. Calculated as the average time from order placed to order ready across your last 5 completed orders. Updates automatically after each order." />
         </h2>
         <p className="text-sm text-gray-500">
@@ -393,9 +411,9 @@ export default function SettingsPage() {
       </div>
 
       {/* Event share mode */}
-      <div className="card space-y-4">
+      <div className={`card space-y-4 ${!hasFlag('analytics') ? 'opacity-50 pointer-events-none select-none' : ''}`}>
         <h2 className="font-semibold text-gray-700 flex items-center gap-1.5">
-          Analytics: event share
+          Analytics: event share{!hasFlag('analytics') && <ProBadge />}
           <Tooltip text="Use this when you trade as part of an event where the organiser takes a cut. Your analytics will scale down to show only your portion — it doesn't affect payments or orders, just the numbers displayed." />
         </h2>
         <p className="text-sm text-gray-500">

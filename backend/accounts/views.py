@@ -10,27 +10,48 @@ from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, Bl
 
 from .models import User, EmailOTP, PlatformConfig
 from .serializers import RegisterSerializer, LoginSerializer, OTPVerifySerializer
-from .utils import generate_otp_code, send_otp_email, make_partial_token, verify_partial_token
+from .utils import (
+    generate_otp_code, send_otp_email, make_partial_token, verify_partial_token,
+    make_email_verify_token, verify_email_token, send_verification_email,
+)
 
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        from tenants.models import Tenant
+        from tenants.serializers import TenantSerializer
+
         serializer = RegisterSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        store_name = request.data.get('store_name', '').strip()
+        store_slug = request.data.get('store_slug', '').strip()
+        if not store_name or not store_slug:
+            return Response({'detail': 'store_name and store_slug are required.'}, status=status.HTTP_400_BAD_REQUEST)
+        if Tenant.objects.filter(slug=store_slug).exists():
+            return Response({'store_slug': ['A store with this URL already exists.']}, status=status.HTTP_400_BAD_REQUEST)
+
         user = serializer.save()
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            'access': str(refresh.access_token),
-            'refresh': str(refresh),
-            'user': {
-                'id': user.id,
-                'email': user.email,
-                'full_name': user.full_name,
-            }
-        }, status=status.HTTP_201_CREATED)
+        user.is_active = False
+        user.email_verified = False
+        user.save()
+
+        tenant = Tenant.objects.create(name=store_name, slug=store_slug)
+        tenant.generate_qr_code()
+        tenant.save()
+        from accounts.models import TenantMembership
+        TenantMembership.objects.create(user=user, tenant=tenant, role='owner')
+
+        token = make_email_verify_token(user.id)
+        send_verification_email(user, token)
+
+        return Response(
+            {'detail': 'Account created. Please check your email to verify and activate your store.'},
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class LoginView(APIView):
@@ -53,6 +74,11 @@ class LoginView(APIView):
             return Response({'detail': 'Invalid credentials.'}, status=status.HTTP_401_UNAUTHORIZED)
 
         if not user.is_active:
+            if not getattr(user, 'email_verified', True):
+                return Response(
+                    {'detail': 'Please verify your email address first. Check your inbox for the activation link.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             return Response({'detail': 'Account is disabled.'}, status=status.HTTP_403_FORBIDDEN)
 
         if PlatformConfig.get().mfa_required and user.mfa_enabled:
@@ -62,7 +88,12 @@ class LoginView(APIView):
                 code=code,
                 expires_at=timezone.now() + timedelta(minutes=10),
             )
-            send_otp_email(user, code)
+            sent = send_otp_email(user, code)
+            if not sent:
+                return Response(
+                    {'detail': 'Could not send login code — email service unavailable. Please try again shortly.'},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
             partial_token = make_partial_token(user.id)
             return Response({
                 'mfa_required': True,
@@ -247,13 +278,95 @@ class SetupInitialAdminView(APIView):
 class PlatformConfigView(APIView):
     permission_classes = [IsSuperAdmin]
 
+    def _serialize(self, config):
+        return {
+            'mfa_required': config.mfa_required,
+            'sandbox_mode': config.sandbox_mode,
+            'updated_at': config.updated_at,
+        }
+
     def get(self, request):
-        config = PlatformConfig.get()
-        return Response({'mfa_required': config.mfa_required, 'updated_at': config.updated_at})
+        return Response(self._serialize(PlatformConfig.get()))
 
     def patch(self, request):
         config = PlatformConfig.get()
         if 'mfa_required' in request.data:
             config.mfa_required = bool(request.data['mfa_required'])
-            config.save()
-        return Response({'mfa_required': config.mfa_required, 'updated_at': config.updated_at})
+        if 'sandbox_mode' in request.data:
+            config.sandbox_mode = bool(request.data['sandbox_mode'])
+        config.save()
+        return Response(self._serialize(config))
+
+
+class VerifyEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        token = request.data.get('token', '').strip()
+        if not token:
+            return Response({'detail': 'Token is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user_id = verify_email_token(token)
+        if user_id is None:
+            return Response({'detail': 'Verification link is invalid or has expired.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.is_active = True
+        user.email_verified = True
+        user.save()
+
+        # Activate the tenant too
+        from accounts.models import TenantMembership
+        membership = TenantMembership.objects.filter(user=user, role='owner').select_related('tenant').first()
+        if membership:
+            membership.tenant.is_active = True
+            membership.tenant.save(update_fields=['is_active'])
+
+        refresh = RefreshToken.for_user(user)
+        refresh['email'] = user.email
+        refresh['full_name'] = user.full_name
+        refresh['is_superadmin'] = user.is_superadmin
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'tenant_slug': membership.tenant.slug if membership else None,
+        }, status=status.HTTP_200_OK)
+
+
+class OrphanedUsersView(APIView):
+    """Users with no tenant — typically failed or unverified registrations."""
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request):
+        from accounts.models import TenantMembership
+        orphans = User.objects.filter(
+            memberships__isnull=True,
+            is_superadmin=False,
+        ).order_by('date_joined')
+        return Response([{
+            'id': u.id,
+            'email': u.email,
+            'full_name': u.full_name,
+            'is_active': u.is_active,
+            'email_verified': getattr(u, 'email_verified', True),
+            'date_joined': u.date_joined,
+        } for u in orphans])
+
+    def delete(self, request):
+        user_id = request.data.get('user_id')
+        email = request.data.get('email', '').strip().lower()
+        if not user_id and not email:
+            return Response({'detail': 'user_id or email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            if user_id:
+                user = User.objects.get(pk=user_id, is_superadmin=False)
+            else:
+                user = User.objects.get(email__iexact=email, is_superadmin=False)
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+        user.delete()
+        return Response({'detail': f'User {user.email} deleted.'}, status=status.HTTP_200_OK)

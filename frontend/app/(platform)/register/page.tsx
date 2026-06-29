@@ -1,11 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import api from '@/lib/api'
-import { setToken } from '@/lib/auth'
-import Cookies from 'js-cookie'
 
 function slugify(value: string): string {
   return value
@@ -16,7 +13,6 @@ function slugify(value: string): string {
 }
 
 export default function RegisterPage() {
-  const router = useRouter()
   const [form, setForm] = useState({
     full_name: '',
     email: '',
@@ -26,6 +22,7 @@ export default function RegisterPage() {
   })
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -43,22 +40,14 @@ export default function RegisterPage() {
     setError(null)
     setLoading(true)
     try {
-      // Step 1: Register user
-      const { data: authData } = await api.post('/api/auth/register/', {
+      await api.post('/api/auth/register/', {
         full_name: form.full_name,
         email: form.email,
         password: form.password,
+        store_name: form.store_name,
+        store_slug: form.store_slug,
       })
-      setToken(authData.access, authData.refresh)
-
-      // Step 2: Register tenant
-      const { data: tenantData } = await api.post('/api/tenants/register/', {
-        name: form.store_name,
-        slug: form.store_slug,
-      })
-      Cookies.set('tenant_slug', tenantData.tenant.slug, { expires: 7, sameSite: 'lax' })
-
-      router.push('/seller/dashboard')
+      setDone(true)
     } catch (err: any) {
       const msg = err?.response?.data
       if (typeof msg === 'object') {
@@ -69,6 +58,28 @@ export default function RegisterPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (done) {
+    return (
+      <main className="min-h-screen bg-brand-50 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md text-center">
+          <div className="text-5xl mb-4">📬</div>
+          <h1 className="text-2xl font-extrabold text-gray-900 mb-2">Check your email</h1>
+          <p className="text-gray-500 mb-6">
+            We&apos;ve sent a verification link to <span className="font-medium text-gray-800">{form.email}</span>.
+            Click it to activate your store and sign in.
+          </p>
+          <p className="text-sm text-gray-400">
+            Didn&apos;t get it? Check your spam folder, or{' '}
+            <button onClick={() => setDone(false)} className="text-brand-600 hover:underline">
+              go back and try again
+            </button>
+            .
+          </p>
+        </div>
+      </main>
+    )
   }
 
   return (
@@ -115,7 +126,7 @@ export default function RegisterPage() {
             </div>
             {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
             <button type="submit" disabled={loading} className="btn-primary w-full mt-2">
-              {loading ? 'Creating your store…' : 'Create store & sign in'}
+              {loading ? 'Creating your store…' : 'Create store'}
             </button>
           </form>
           <p className="text-center text-sm text-gray-500 mt-4">

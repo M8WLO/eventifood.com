@@ -21,6 +21,7 @@ class Order(models.Model):
     total = models.DecimalField(max_digits=10, decimal_places=2)
     notes = models.TextField(blank=True)
     stripe_session_id = models.CharField(max_length=200, blank=True, default='')
+    paypal_order_id = models.CharField(max_length=200, blank=True, default='')
     discount_code = models.CharField(max_length=50, blank=True, default='')
     discount_amount = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)

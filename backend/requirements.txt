@@ -11,3 +11,4 @@ dj-database-url==2.2.0
 whitenoise==6.7.0
 gunicorn==22.0.0
 requests==2.32.3
+gocardless-pro==1.29.0

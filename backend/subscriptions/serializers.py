@@ -31,11 +31,20 @@ class TenantPlanSerializer(serializers.ModelSerializer):
     )
     can_change = serializers.SerializerMethodField()
     days_until_change = serializers.SerializerMethodField()
+    subscription_next_billing_date = serializers.SerializerMethodField()
+    subscription_billing_cycle = serializers.SerializerMethodField()
 
     class Meta:
         model = TenantPlan
-        fields = ['id', 'plan', 'plan_id', 'activated_at', 'next_change_allowed_at', 'can_change', 'days_until_change']
-        read_only_fields = ['id', 'activated_at', 'next_change_allowed_at', 'can_change', 'days_until_change']
+        fields = [
+            'id', 'plan', 'plan_id', 'activated_at', 'next_change_allowed_at',
+            'can_change', 'days_until_change',
+            'subscription_next_billing_date', 'subscription_billing_cycle',
+        ]
+        read_only_fields = [
+            'id', 'activated_at', 'next_change_allowed_at', 'can_change', 'days_until_change',
+            'subscription_next_billing_date', 'subscription_billing_cycle',
+        ]
 
     def get_can_change(self, obj):
         request = self.context.get('request')
@@ -46,6 +55,20 @@ class TenantPlanSerializer(serializers.ModelSerializer):
             return 0
         delta = obj.next_change_allowed_at - timezone.now()
         return max(0, delta.days)
+
+    def get_subscription_next_billing_date(self, obj):
+        try:
+            sub = obj.tenant.subscription
+            return str(sub.next_billing_date) if sub.next_billing_date else None
+        except Exception:
+            return None
+
+    def get_subscription_billing_cycle(self, obj):
+        try:
+            sub = obj.tenant.subscription
+            return sub.plan  # 'monthly' or 'annual'
+        except Exception:
+            return None
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):

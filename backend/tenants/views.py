@@ -162,6 +162,28 @@ class TenantAdminDetailView(APIView):
         serializer.save()
         return Response(serializer.data)
 
+    def delete(self, request, slug):
+        tenant = self._get_tenant(slug)
+        if not tenant:
+            return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
+        confirm = request.data.get('confirm_name', '')
+        if confirm != tenant.name:
+            return Response(
+                {'detail': 'Confirmation name does not match.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Capture owner before cascade deletes the membership
+        owner_membership = TenantMembership.objects.filter(tenant=tenant, role='owner').select_related('user').first()
+        owner_user = owner_membership.user if owner_membership else None
+
+        tenant.delete()  # cascades TenantMembership
+
+        # Delete owner user only if they have no remaining memberships
+        if owner_user and not TenantMembership.objects.filter(user=owner_user).exists():
+            owner_user.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class TenantAdminMembersView(APIView):
     permission_classes = [IsSuperAdmin]
@@ -198,3 +220,161 @@ class TenantAdminOrdersView(APIView):
             return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
         orders = Order.objects.filter(tenant=tenant).order_by('-created_at')[:100]
         return Response(OrderSerializer(orders, many=True).data)
+
+
+class TenantCopyView(APIView):
+    """Copy all catalog, settings and orders from one tenant to another."""
+    permission_classes = [IsSuperAdmin]
+
+    def post(self, request):
+        import os, shutil
+        from django.db import transaction
+        from django.conf import settings as django_settings
+        from accounts.models import User
+        from catalog.models import Category, Product, ProductVariation
+        from orders.models import Order, OrderItem, OrderItemExtra
+
+        from_email = request.data.get('from_email', '').strip()
+        to_email   = request.data.get('to_email', '').strip()
+        copy_orders = request.data.get('copy_orders', True)
+
+        try:
+            src_user = User.objects.get(email=from_email)
+        except User.DoesNotExist:
+            return Response({'detail': f'Source user not found: {from_email}'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            dst_user = User.objects.get(email=to_email)
+        except User.DoesNotExist:
+            return Response({'detail': f'Destination user not found: {to_email}'}, status=status.HTTP_404_NOT_FOUND)
+
+        src_m = TenantMembership.objects.filter(user=src_user, role='owner').select_related('tenant').first()
+        dst_m = TenantMembership.objects.filter(user=dst_user, role='owner').select_related('tenant').first()
+
+        if not src_m:
+            return Response({'detail': f'No tenant for source user.'}, status=status.HTTP_404_NOT_FOUND)
+        if not dst_m:
+            return Response({'detail': f'No tenant for destination user.'}, status=status.HTTP_404_NOT_FOUND)
+
+        src = src_m.tenant
+        dst = dst_m.tenant
+
+        def copy_media(src_name, subdir):
+            """Copy a media file to a new path; return the new relative path."""
+            if not src_name:
+                return ''
+            src_path = os.path.join(django_settings.MEDIA_ROOT, str(src_name))
+            if not os.path.exists(src_path):
+                return str(src_name)
+            ext = os.path.splitext(src_path)[1]
+            import uuid
+            new_name = f"{subdir}/{uuid.uuid4().hex}{ext}"
+            dst_path = os.path.join(django_settings.MEDIA_ROOT, new_name)
+            os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+            shutil.copy2(src_path, dst_path)
+            return new_name
+
+        stats = {'categories': 0, 'products': 0, 'variations': 0, 'orders': 0}
+
+        with transaction.atomic():
+            # --- Settings ---
+            dst.theme = src.theme
+            dst.order_number_mode = src.order_number_mode
+            dst.wait_time_enabled = src.wait_time_enabled
+            dst.kitchen_nav_items = src.kitchen_nav_items
+            if src.banner:
+                dst.banner = copy_media(src.banner.name, 'banners')
+            dst.save()
+
+            # --- Categories ---
+            cat_map = {}
+            dst.categories.all().delete()
+            for cat in src.categories.all().order_by('display_order'):
+                new_cat = Category.objects.create(
+                    tenant=dst,
+                    name=cat.name,
+                    display_order=cat.display_order,
+                )
+                cat_map[cat.id] = new_cat
+                stats['categories'] += 1
+
+            # --- Products + Variations ---
+            var_map = {}
+            Product.objects.filter(tenant=dst).delete()
+            for prod in Product.objects.filter(tenant=src).order_by('display_order'):
+                new_photo = copy_media(prod.photo.name if prod.photo else '', 'products')
+                new_prod = Product.objects.create(
+                    tenant=dst,
+                    category=cat_map.get(prod.category_id),
+                    name=prod.name,
+                    description=prod.description,
+                    base_price=prod.base_price,
+                    has_variations=prod.has_variations,
+                    photo=new_photo or None,
+                    is_visible=prod.is_visible,
+                    out_of_stock=prod.out_of_stock,
+                    display_order=prod.display_order,
+                    prep_time_minutes=prod.prep_time_minutes,
+                )
+                stats['products'] += 1
+
+                for var in prod.variations.all():
+                    new_vphoto = copy_media(var.photo.name if var.photo else '', 'variations')
+                    new_var = ProductVariation.objects.create(
+                        product=new_prod,
+                        name=var.name,
+                        cost_price=var.cost_price,
+                        retail_price=var.retail_price,
+                        photo=new_vphoto or None,
+                        is_available=var.is_available,
+                    )
+                    var_map[var.id] = new_var
+                    stats['variations'] += 1
+
+            # --- Orders ---
+            if copy_orders:
+                Order.objects.filter(tenant=dst).delete()
+                for order in Order.objects.filter(tenant=src).prefetch_related('items__extras'):
+                    new_order = Order.objects.create(
+                        tenant=dst,
+                        order_number=order.order_number,
+                        trading_date=order.trading_date,
+                        daily_number=order.daily_number,
+                        buyer_name=order.buyer_name,
+                        buyer_email=order.buyer_email,
+                        buyer_phone=order.buyer_phone,
+                        status=order.status,
+                        total=order.total,
+                        notes=order.notes,
+                        discount_code=order.discount_code,
+                        discount_amount=order.discount_amount,
+                        ready_at=order.ready_at,
+                    )
+                    # Preserve original timestamps via update
+                    Order.objects.filter(pk=new_order.pk).update(
+                        created_at=order.created_at,
+                        updated_at=order.updated_at,
+                    )
+                    for item in order.items.all():
+                        new_item = OrderItem.objects.create(
+                            order=new_order,
+                            variation=var_map.get(item.variation_id),
+                            product_name=item.product_name,
+                            variation_name=item.variation_name,
+                            retail_price=item.retail_price,
+                            cost_price=item.cost_price,
+                            quantity=item.quantity,
+                            subtotal=item.subtotal,
+                        )
+                        for extra in item.extras.all():
+                            OrderItemExtra.objects.create(
+                                order_item=new_item,
+                                extra=extra.extra,
+                                name=extra.name,
+                                additional_price=extra.additional_price,
+                            )
+                    stats['orders'] += 1
+
+        return Response({
+            'detail': f"Copied from '{src.slug}' to '{dst.slug}' successfully.",
+            'stats': stats,
+        })

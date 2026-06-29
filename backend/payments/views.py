@@ -3,6 +3,7 @@ import json
 import stripe
 from decimal import Decimal
 from django.db import models
+from django.http import HttpResponseRedirect
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -11,18 +12,30 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 
 from .models import TenantPaymentProvider
 from .serializers import PaymentProviderSerializer
+from . import paypal_orders_client
+from .sandbox_helpers import get_stripe_key
 
 
 def _stripe_client():
-    stripe.api_key = os.environ.get('STRIPE_SECRET_KEY', '')
+    stripe.api_key = get_stripe_key()
     return stripe
+
+
+def _sandbox_active() -> bool:
+    from accounts.models import PlatformConfig
+    try:
+        return PlatformConfig.get().sandbox_mode
+    except Exception:
+        return False
 
 
 def _provider_status(tenant):
     """Return full payment provider status dict for a tenant."""
+    sandbox = _sandbox_active()
     try:
         p = tenant.payment_provider
         return {
+            'sandbox_mode': sandbox,
             'payment_mode': tenant.payment_mode,
             'stripe_account_id': p.stripe_account_id,
             'stripe_onboarding_complete': p.stripe_onboarding_complete,
@@ -37,6 +50,7 @@ def _provider_status(tenant):
         }
     except TenantPaymentProvider.DoesNotExist:
         return {
+            'sandbox_mode': sandbox,
             'payment_mode': tenant.payment_mode,
             'stripe_account_id': '',
             'stripe_onboarding_complete': False,
@@ -419,5 +433,474 @@ class StripeWebhookView(APIView):
             if order_id:
                 from orders.models import Order
                 Order.objects.filter(id=order_id, status='pending_payment').delete()
+
+        return Response({'received': True})
+
+
+def _build_order_data(request, tenant):
+    """
+    Parse and validate basket items from request.data.
+    Returns (line_items_for_stripe, order_items_list, total, discount info)
+    or raises ValueError with a human-readable message.
+    Shared between Stripe and PayPal checkout.
+    """
+    from catalog.models import ProductVariation, ProductExtra
+    buyer_name = request.data.get('buyer_name', '').strip()
+    buyer_email = request.data.get('buyer_email', '').strip()
+    buyer_phone = request.data.get('buyer_phone', '').strip()
+    notes = request.data.get('notes', '').strip()
+    items_data = request.data.get('items', [])
+    raw_discount_code = request.data.get('discount_code', '').upper().strip()
+
+    if not buyer_name or not buyer_email:
+        raise ValueError('Name and email are required.')
+    if not items_data:
+        raise ValueError('Basket is empty.')
+
+    order_items = []
+    total = Decimal('0.00')
+
+    for item_data in items_data:
+        try:
+            variation = ProductVariation.objects.select_related(
+                'product__category__tenant'
+            ).get(pk=item_data['variation_id'], product__category__tenant=tenant)
+        except ProductVariation.DoesNotExist:
+            raise ValueError('Item not found.')
+        extra_ids = item_data.get('extras', [])
+        resolved_extras = []
+        extras_cost = Decimal('0.00')
+        for extra_id in extra_ids:
+            try:
+                extra = ProductExtra.objects.get(pk=extra_id, product=variation.product)
+                resolved_extras.append(extra)
+                extras_cost += extra.additional_price
+            except ProductExtra.DoesNotExist:
+                pass
+        qty = int(item_data.get('quantity', 1))
+        item_price = variation.retail_price + extras_cost
+        subtotal = item_price * qty
+        total += subtotal
+        order_items.append({
+            'variation': variation,
+            'product_name': variation.product.name,
+            'variation_name': variation.name,
+            'retail_price': item_price,
+            'cost_price': variation.cost_price,
+            'quantity': qty,
+            'subtotal': subtotal,
+            'resolved_extras': resolved_extras,
+        })
+
+    discount_amount = Decimal('0.00')
+    applied_code = ''
+    if raw_discount_code:
+        from discounts.models import DiscountCode
+        try:
+            dc = DiscountCode.objects.get(tenant=tenant, code=raw_discount_code)
+            if dc.is_valid():
+                if dc.discount_type == 'percentage':
+                    discount_amount = (total * dc.discount_value / 100).quantize(Decimal('0.01'))
+                else:
+                    discount_amount = min(dc.discount_value, total)
+                applied_code = dc.code
+        except DiscountCode.DoesNotExist:
+            pass
+
+    discounted_total = max(total - discount_amount, Decimal('0.01'))
+    return {
+        'buyer_name': buyer_name,
+        'buyer_email': buyer_email,
+        'buyer_phone': buyer_phone,
+        'notes': notes,
+        'order_items': order_items,
+        'discount_amount': discount_amount,
+        'applied_code': applied_code,
+        'discounted_total': discounted_total,
+    }
+
+
+def _create_order_record(tenant, parsed):
+    """Create a pending Order from parsed basket data. Returns the Order instance."""
+    from orders.models import Order, OrderItem, OrderItemExtra
+    from orders.views import _next_order_numbers
+
+    order_number, daily_number, trading_date = _next_order_numbers(tenant)
+    order = Order.objects.create(
+        tenant=tenant,
+        order_number=order_number,
+        daily_number=daily_number,
+        trading_date=trading_date,
+        total=parsed['discounted_total'],
+        discount_code=parsed['applied_code'],
+        discount_amount=parsed['discount_amount'],
+        buyer_name=parsed['buyer_name'],
+        buyer_email=parsed['buyer_email'],
+        buyer_phone=parsed['buyer_phone'],
+        notes=parsed['notes'],
+        status='pending_payment',
+    )
+    for item in parsed['order_items']:
+        resolved_extras = item.pop('resolved_extras')
+        order_item = OrderItem.objects.create(order=order, **item)
+        for extra in resolved_extras:
+            OrderItemExtra.objects.create(
+                order_item=order_item,
+                extra=extra,
+                name=extra.name,
+                additional_price=extra.additional_price,
+            )
+    return order
+
+
+def _activate_order(order):
+    """Mark an order as placed and send the confirmation email."""
+    from notifications.services import send_order_confirmation_email
+    if order.status != 'pending_payment':
+        return  # already activated (idempotent)
+    order.status = 'placed'
+    order.save(update_fields=['status'])
+    send_order_confirmation_email(order)
+
+
+class PayPalCheckoutCreateView(APIView):
+    """
+    POST /api/payments/paypal/create/
+    Creates a pending order + PayPal order for a customer.
+    Returns { order_number, paypal_order_id, approval_url }.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        tenant = request.tenant
+        if not tenant:
+            return Response({'detail': 'Store not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Only subscription tenants with PayPal configured can use this
+        try:
+            provider = tenant.payment_provider
+            if not provider.paypal_onboarding_complete or not provider.paypal_merchant_id:
+                return Response(
+                    {'detail': 'This store has not set up PayPal payments.'},
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
+            payee_email = provider.paypal_merchant_id
+        except TenantPaymentProvider.DoesNotExist:
+            return Response(
+                {'detail': 'This store has not set up PayPal payments.'},
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+
+        try:
+            parsed = _build_order_data(request, tenant)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        order = _create_order_record(tenant, parsed)
+
+        frontend_url = os.environ.get('FRONTEND_URL', 'https://eventifood.com')
+        backend_url = os.environ.get('BACKEND_URL', request.build_absolute_uri('/').rstrip('/'))
+
+        return_url = f'{backend_url}/api/payments/paypal/capture/'
+        cancel_url = f'https://{tenant.slug}.eventifood.com/store/{tenant.slug}/basket?paypal_cancelled=1'
+
+        try:
+            result = paypal_orders_client.create_order(
+                amount_gbp=str(parsed['discounted_total']),
+                payee_email=payee_email,
+                order_number=order.order_number,
+                store_name=tenant.name,
+                return_url=return_url,
+                cancel_url=cancel_url,
+            )
+        except Exception as e:
+            order.delete()
+            return Response({'detail': f'PayPal error: {e}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        order.paypal_order_id = result['id']
+        order.save(update_fields=['paypal_order_id'])
+
+        # Store order number in sessionStorage-friendly response for basket to track
+        from discounts.models import DiscountCode
+        if parsed['applied_code']:
+            DiscountCode.objects.filter(tenant=tenant, code=parsed['applied_code']).update(
+                times_used=models.F('times_used') + 1
+            )
+
+        return Response({
+            'order_number': order.order_number,
+            'paypal_order_id': result['id'],
+            'approval_url': result['approval_url'],
+        })
+
+
+class PayPalCheckoutCaptureView(APIView):
+    """
+    GET /api/payments/paypal/capture/?token=PAYPAL_ORDER_ID
+    PayPal redirects here after customer approves. Captures payment and activates order.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from orders.models import Order
+
+        paypal_order_id = request.query_params.get('token')
+        if not paypal_order_id:
+            return HttpResponseRedirect('https://eventifood.com?paypal_error=missing_token')
+
+        order = Order.objects.filter(paypal_order_id=paypal_order_id, status='pending_payment').first()
+        if not order:
+            # May already be activated via webhook — check
+            order = Order.objects.filter(paypal_order_id=paypal_order_id).first()
+            if order and order.status != 'pending_payment':
+                frontend_url = f'https://{order.tenant.slug}.eventifood.com'
+                return HttpResponseRedirect(f'{frontend_url}/store/{order.tenant.slug}/order/{order.order_number}?paid=1')
+            return HttpResponseRedirect('https://eventifood.com?paypal_error=order_not_found')
+
+        tenant = order.tenant
+
+        try:
+            capture_data = paypal_orders_client.capture_order(paypal_order_id)
+        except Exception as e:
+            frontend_url = f'https://{tenant.slug}.eventifood.com'
+            return HttpResponseRedirect(
+                f'{frontend_url}/store/{tenant.slug}/basket?paypal_error=capture_failed'
+            )
+
+        capture_status = capture_data.get('status', '')
+        if capture_status == 'COMPLETED':
+            _activate_order(order)
+            frontend_url = f'https://{tenant.slug}.eventifood.com'
+            return HttpResponseRedirect(
+                f'{frontend_url}/store/{tenant.slug}/order/{order.order_number}?paid=1'
+            )
+
+        # Payment not completed — send back to basket with error
+        frontend_url = f'https://{tenant.slug}.eventifood.com'
+        return HttpResponseRedirect(
+            f'{frontend_url}/store/{tenant.slug}/basket?paypal_error=not_completed'
+        )
+
+
+class PayPalCheckoutWebhookView(APIView):
+    """
+    POST /api/payments/paypal/webhook/
+    Handles PAYMENT.CAPTURE.COMPLETED as a fallback if the redirect capture failed.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        from orders.models import Order
+
+        event_type = request.data.get('event_type', '')
+        if event_type != 'PAYMENT.CAPTURE.COMPLETED':
+            return Response({'received': True})
+
+        resource = request.data.get('resource', {})
+        # custom_id was set to order_number when the PayPal order was created
+        order_number = resource.get('custom_id', '')
+        if not order_number:
+            return Response({'received': True})
+
+        try:
+            order = Order.objects.get(order_number=order_number, status='pending_payment')
+            _activate_order(order)
+        except Order.DoesNotExist:
+            pass  # already activated or unknown
+
+        return Response({'received': True})
+
+
+# ─── GoCardless platform subscription billing ───────────────────────────────
+
+
+class GoCardlessRedirectView(APIView):
+    """
+    POST /api/payments/gocardless/redirect/
+    Creates a GoCardless redirect flow so a seller can authorise a Direct Debit
+    mandate for their Eventifood subscription fee.
+    Body: { plan_id: int, period: 'monthly' | 'annual' }
+    Returns: { redirect_url, session_token }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        import uuid
+        from subscriptions.models import Plan
+        from .gocardless_billing_client import create_redirect_flow
+
+        plan_id = request.data.get('plan_id')
+        period = request.data.get('period', 'monthly')
+
+        if not plan_id:
+            return Response({'detail': 'plan_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            plan = Plan.objects.get(pk=plan_id, is_active=True, billing_model='subscription')
+        except Plan.DoesNotExist:
+            return Response({'detail': 'Plan not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        tenant = request.tenant
+        if not tenant:
+            return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        session_token = str(uuid.uuid4())
+        frontend_url = os.environ.get('FRONTEND_URL', 'https://eventifood.com')
+        success_redirect_url = f'{frontend_url}/seller/payment-portal/gocardless/callback'
+
+        try:
+            flow = create_redirect_flow(
+                description=f'Eventifood {plan.name} subscription',
+                session_token=session_token,
+                success_redirect_url=success_redirect_url,
+                prefilled_email=request.user.email,
+            )
+        except Exception as e:
+            return Response({'detail': f'GoCardless error: {e}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'redirect_url': flow.redirect_url, 'session_token': session_token})
+
+
+class GoCardlessCompleteView(APIView):
+    """
+    POST /api/payments/gocardless/complete/
+    Completes the redirect flow, creates the GC subscription, activates TenantPlan.
+    Body: { redirect_flow_id, session_token, plan_id, period }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from subscriptions.models import Plan, Subscription, TenantPlan
+        from .gocardless_billing_client import complete_redirect_flow, create_subscription as gc_create_subscription
+
+        redirect_flow_id = request.data.get('redirect_flow_id')
+        session_token = request.data.get('session_token')
+        plan_id = request.data.get('plan_id')
+        period = request.data.get('period', 'monthly')
+
+        if not all([redirect_flow_id, session_token, plan_id]):
+            return Response(
+                {'detail': 'redirect_flow_id, session_token, and plan_id are required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            plan = Plan.objects.get(pk=plan_id, is_active=True, billing_model='subscription')
+        except Plan.DoesNotExist:
+            return Response({'detail': 'Plan not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        tenant = request.tenant
+        if not tenant:
+            return Response({'detail': 'Tenant not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            flow = complete_redirect_flow(redirect_flow_id, session_token)
+        except Exception as e:
+            return Response(
+                {'detail': f'Could not complete GoCardless authorisation: {e}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        mandate_id = flow.links.mandate
+
+        if period == 'annual':
+            amount_pence = int(plan.annual_price * 100)
+            interval_unit = 'yearly'
+            sub_plan = 'annual'
+        else:
+            amount_pence = int(plan.monthly_price * 100)
+            interval_unit = 'monthly'
+            sub_plan = 'monthly_split'
+
+        try:
+            gc_sub = gc_create_subscription(
+                mandate_id=mandate_id,
+                amount_pence=amount_pence,
+                interval_unit=interval_unit,
+                name=f'Eventifood {plan.name}',
+                metadata={'tenant_slug': tenant.slug, 'plan_id': str(plan.pk), 'period': period},
+            )
+        except Exception as e:
+            return Response(
+                {'detail': f'GoCardless subscription error: {e}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Persist the subscription record
+        subscription, _ = Subscription.objects.get_or_create(tenant=tenant)
+        subscription.plan_tier = plan
+        subscription.plan = sub_plan
+        subscription.status = 'active'
+        subscription.gocardless_mandate_id = mandate_id
+        subscription.gocardless_subscription_id = gc_sub.id
+        subscription.payment_provider = 'gocardless'
+        subscription.annual_cost = plan.annual_price if period == 'annual' else plan.monthly_price * 12
+        subscription.started_at = timezone.now()
+        subscription.save()
+
+        # Activate the tenant's plan tier
+        tenant_plan, _ = TenantPlan.objects.get_or_create(tenant=tenant)
+        tenant_plan.set_plan(plan, user=request.user)
+
+        return Response({'success': True, 'plan_name': plan.name})
+
+
+class GoCardlessWebhookView(APIView):
+    """
+    POST /api/payments/gocardless/webhook/
+    Receives GoCardless event notifications. Verifies the HMAC-SHA256 signature.
+    Handles: mandates.cancelled, subscriptions.cancelled, payments.failed
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        import hashlib
+        import hmac as hmac_module
+        from subscriptions.models import Subscription
+
+        webhook_secret = os.environ.get('GOCARDLESS_WEBHOOK_SECRET', '')
+        sig_header = request.META.get('HTTP_WEBHOOK_SIGNATURE', '')
+
+        if webhook_secret and sig_header:
+            expected = hmac_module.new(
+                webhook_secret.encode('utf-8'),
+                request.body,
+                hashlib.sha256,
+            ).hexdigest()
+            if not hmac_module.compare_digest(expected, sig_header):
+                return Response({'detail': 'Invalid signature.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        try:
+            payload = json.loads(request.body)
+        except (ValueError, KeyError):
+            return Response({'detail': 'Bad payload.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        for event in payload.get('events', []):
+            resource_type = event.get('resource_type', '')
+            action = event.get('action', '')
+            links = event.get('links', {})
+
+            if resource_type == 'mandates' and action == 'cancelled':
+                mandate_id = links.get('mandate', '')
+                if mandate_id:
+                    Subscription.objects.filter(gocardless_mandate_id=mandate_id).update(
+                        status='cancelled'
+                    )
+
+            elif resource_type == 'subscriptions' and action == 'cancelled':
+                gc_sub_id = links.get('subscription', '')
+                if gc_sub_id:
+                    Subscription.objects.filter(gocardless_subscription_id=gc_sub_id).update(
+                        status='cancelled'
+                    )
+
+            elif resource_type == 'payments' and action == 'failed':
+                # Payment failed — mark past_due for the associated mandate if we can identify it
+                mandate_id = links.get('mandate', '')
+                if mandate_id:
+                    Subscription.objects.filter(
+                        gocardless_mandate_id=mandate_id,
+                        status='active',
+                    ).update(status='past_due')
 
         return Response({'received': True})

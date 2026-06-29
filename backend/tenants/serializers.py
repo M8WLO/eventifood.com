@@ -8,7 +8,7 @@ class TenantSerializer(serializers.ModelSerializer):
         model = Tenant
         fields = ['id', 'slug', 'name', 'banner', 'theme', 'is_active', 'created_at',
                   'qr_code_svg', 'kitchen_nav_items', 'order_number_mode', 'payment_mode',
-                  'wait_time_enabled', 'is_demo', 'trial_expires_at']
+                  'wait_time_enabled', 'is_demo', 'trial_expires_at', 'account_number']
         read_only_fields = ['id', 'created_at', 'qr_code_svg']
 
 
@@ -17,13 +17,26 @@ class TenantPublicSerializer(serializers.ModelSerializer):
     estimated_wait_minutes = serializers.SerializerMethodField()
     active_event = serializers.SerializerMethodField()
     trial_expired = serializers.SerializerMethodField()
+    paypal_available = serializers.SerializerMethodField()
 
     class Meta:
         model = Tenant
-        fields = ['name', 'banner', 'theme', 'wait_time_enabled', 'estimated_wait_minutes', 'active_event', 'is_demo', 'trial_expired']
+        fields = [
+            'name', 'banner', 'theme', 'payment_mode',
+            'wait_time_enabled', 'estimated_wait_minutes',
+            'active_event', 'is_demo', 'trial_expired', 'paypal_available',
+        ]
 
     def get_trial_expired(self, obj):
         return not obj.is_service_live()
+
+    def get_paypal_available(self, obj):
+        if obj.payment_mode == 'payg':
+            return False
+        try:
+            return bool(obj.payment_provider.paypal_onboarding_complete and obj.payment_provider.paypal_merchant_id)
+        except Exception:
+            return False
 
     def get_active_event(self, obj):
         from events.models import Event

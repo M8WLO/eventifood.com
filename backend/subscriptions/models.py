@@ -95,6 +95,16 @@ class TenantPlan(models.Model):
                     provider.save(update_fields=fields)
 
 
+class PlatformFeatureOverride(models.Model):
+    """Platform-wide feature flag that overrides plan restrictions for all tenants."""
+    flag = models.CharField(max_length=50, unique=True)
+    is_enabled = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.flag} ({'on' if self.is_enabled else 'off'})"
+
+
 class Subscription(models.Model):
     PLANS = [
         ('monthly_split', 'Monthly (6-month split)'),
@@ -113,6 +123,8 @@ class Subscription(models.Model):
     stripe_subscription_id = models.CharField(max_length=100, blank=True)
     stripe_customer_id = models.CharField(max_length=100, blank=True)
     paypal_subscription_id = models.CharField(max_length=100, blank=True)
+    gocardless_mandate_id = models.CharField(max_length=100, blank=True)
+    gocardless_subscription_id = models.CharField(max_length=100, blank=True)
     payment_provider = models.CharField(max_length=20, blank=True)  # 'stripe' | 'paypal' | 'gocardless'
     annual_cost = models.DecimalField(max_digits=8, decimal_places=2, default=300.00)
     started_at = models.DateTimeField(null=True, blank=True)
