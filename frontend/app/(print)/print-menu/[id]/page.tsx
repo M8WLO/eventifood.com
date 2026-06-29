@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import api from '@/lib/api'
 
@@ -13,18 +13,75 @@ interface MenuData {
   items: MenuItem[]; banner: string | null; store_name: string
 }
 
+// A4 dimensions in mm
+const A4_W_MM = 210
+const A4_H_MM = 297
+
 export default function PrintMenuPage() {
   const params = useParams()
   const id = params.id as string
   const [menu, setMenu] = useState<MenuData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     api.get(`/api/catalog/print-menus/${id}/render/`)
       .then((r) => { setMenu(r.data); setLoading(false) })
       .catch(() => { setError(true); setLoading(false) })
   }, [id])
+
+  const downloadPDF = async () => {
+    if (!menuRef.current || !menu) return
+    setDownloading(true)
+    try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ])
+
+      const el = menuRef.current
+      const scale = 2 // retina quality
+      const canvas = await html2canvas(el, {
+        scale,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      })
+
+      const imgW = A4_W_MM
+      const imgH = (canvas.height / canvas.width) * imgW
+      const pageH = A4_H_MM
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+
+      let yOffset = 0
+      let remainingH = imgH
+
+      while (remainingH > 0) {
+        const sliceH = Math.min(remainingH, pageH)
+        const srcY = ((imgH - remainingH) / imgH) * canvas.height
+        const srcH = (sliceH / imgH) * canvas.height
+
+        const sliceCanvas = document.createElement('canvas')
+        sliceCanvas.width = canvas.width
+        sliceCanvas.height = srcH
+        const ctx = sliceCanvas.getContext('2d')!
+        ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH)
+
+        if (yOffset > 0) pdf.addPage()
+        pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, sliceH)
+
+        remainingH -= sliceH
+        yOffset += sliceH
+      }
+
+      pdf.save(`${menu.store_name} - ${menu.name}.pdf`)
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -62,14 +119,18 @@ export default function PrintMenuPage() {
             {pageSize} · {menu.items.length} item{menu.items.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <p className="text-xs text-gray-400 mr-2 hidden sm:block">
-          In the dialog, choose <strong>Save as PDF</strong> as the destination
-        </p>
+        <button
+          onClick={downloadPDF}
+          disabled={downloading}
+          className="bg-gray-900 text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+        >
+          {downloading ? 'Generating…' : 'Download PDF'}
+        </button>
         <button
           onClick={() => window.print()}
-          className="bg-gray-900 text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+          className="text-sm text-gray-700 font-medium px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
         >
-          Download PDF
+          Print
         </button>
         <button
           onClick={() => window.close()}
@@ -83,8 +144,11 @@ export default function PrintMenuPage() {
       <div className="no-print" style={{ height: 64 }} />
 
       {/* Menu — prints from here */}
-      <div className="bg-white mx-auto my-6 shadow-xl no-print-shadow" style={{ maxWidth: '900px' }}>
-
+      <div
+        ref={menuRef}
+        className="bg-white mx-auto my-6 shadow-xl no-print-shadow"
+        style={{ maxWidth: '900px' }}
+      >
         {/* Header */}
         <div className="menu-header bg-gray-900 text-white px-8 py-6 flex items-center gap-6">
           {menu.banner ? (
