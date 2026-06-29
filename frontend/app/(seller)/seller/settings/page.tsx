@@ -436,6 +436,19 @@ export default function SettingsPage() {
           When enabled, customers see a coloured banner at the top of your ordering page
           displaying the name of your currently active event menu.
         </p>
+        {tenant && (
+          <p className="text-xs text-gray-400">
+            The banner appears on your ordering page at{' '}
+            <a
+              href={`https://${tenant.slug}.eventifood.com`}
+              target="_blank"
+              rel="noreferrer"
+              className="font-mono text-brand-600 hover:underline"
+            >
+              {tenant.slug}.eventifood.com
+            </a>
+          </p>
+        )}
         <label className="flex items-center gap-3 cursor-pointer">
           <div className="relative">
             <input
