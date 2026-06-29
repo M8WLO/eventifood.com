@@ -47,3 +47,9 @@ def get_gocardless_credentials() -> tuple[str, str]:
         token = os.environ.get('GOCARDLESS_ACCESS_TOKEN', '')
         base = 'https://api.gocardless.com'
     return token, base
+
+
+def get_gocardless_webhook_secret() -> str:
+    if _sandbox_mode():
+        return os.environ.get('GOCARDLESS_WEBHOOK_SECRET_SANDBOX', os.environ.get('GOCARDLESS_WEBHOOK_SECRET', ''))
+    return os.environ.get('GOCARDLESS_WEBHOOK_SECRET', '')

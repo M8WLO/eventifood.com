@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import TenantPaymentProvider
 from .serializers import PaymentProviderSerializer
 from . import paypal_orders_client
-from .sandbox_helpers import get_stripe_key
+from .sandbox_helpers import get_stripe_key, get_gocardless_webhook_secret
 
 
 def _stripe_client():
@@ -858,7 +858,7 @@ class GoCardlessWebhookView(APIView):
         import hmac as hmac_module
         from subscriptions.models import Subscription
 
-        webhook_secret = os.environ.get('GOCARDLESS_WEBHOOK_SECRET', '')
+        webhook_secret = get_gocardless_webhook_secret()
         sig_header = request.META.get('HTTP_WEBHOOK_SIGNATURE', '')
 
         if webhook_secret and sig_header:
