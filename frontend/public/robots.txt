@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /seller/
+Disallow: /superadmin/
+Disallow: /kitchen-login
+Disallow: /verify-otp
+Disallow: /verify-email
+Disallow: /api/
+
+Sitemap: https://eventifood.com/sitemap.xml

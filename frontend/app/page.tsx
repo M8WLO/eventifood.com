@@ -1,6 +1,20 @@
+import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import PricingSection, { type Plan } from './(platform)/pricing-section'
+
+export const metadata: Metadata = {
+  title: 'Food Van Software & QR Ordering App — No Monthly Fee | Eventifood',
+  description:
+    "The UK's food van ordering software. Set up a branded QR-code store, live kitchen display board, and queue management for your food truck or mobile catering business. Free to start — pay 2% only when you trade.",
+  alternates: { canonical: 'https://eventifood.com' },
+  openGraph: {
+    title: 'Food Van Software & QR Ordering App — No Monthly Fee | Eventifood',
+    description:
+      "The UK's food van ordering software. QR ordering, kitchen display, queue management and analytics. Free to set up — 2% per transaction.",
+    url: 'https://eventifood.com',
+  },
+}
 
 const FALLBACK_PLANS: Plan[] = [
   {
@@ -179,11 +193,47 @@ const testimonials = [
   },
 ]
 
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'What is Eventifood and how does it work for food vans?',
+      acceptedAnswer: { '@type': 'Answer', text: 'Eventifood is a food van software and ordering platform built specifically for UK food trucks, street food traders, mobile caterers and festival vendors. Customers scan a QR code, browse your menu, pay on their phone, and get notified when their food is ready — all without downloading an app.' },
+    },
+    {
+      '@type': 'Question',
+      name: 'Does Eventifood have a monthly fee?',
+      acceptedAnswer: { '@type': 'Answer', text: 'No. Eventifood is free to set up with no monthly subscription fee. On the PAYG plan you pay 2% per transaction only when orders come through. Seasonal food trucks pay nothing in the off-season.' },
+    },
+    {
+      '@type': 'Question',
+      name: 'Do my customers need to download an app?',
+      acceptedAnswer: { '@type': 'Answer', text: 'No app required. Customers scan a QR code and your full menu opens in their mobile browser. No download, no account, no friction.' },
+    },
+    {
+      '@type': 'Question',
+      name: 'How does Eventifood help with food truck queue management?',
+      acceptedAnswer: { '@type': 'Answer', text: 'Customers browse and pay on their phone while waiting. The kitchen receives the order instantly, and customers get a notification when food is ready. Van owners report serving 40–60% more customers per hour at events.' },
+    },
+    {
+      '@type': 'Question',
+      name: 'How is Eventifood different from a standard food truck POS?',
+      acceptedAnswer: { '@type': 'Answer', text: 'Eventifood shifts order-taking entirely to the customer\'s phone. Staff focus on cooking. There is no card machine to rent, no monthly software fee, and no terminal at the hatch.' },
+    },
+  ],
+}
+
 export default async function LandingPage() {
   const plans = await fetchPlans()
 
   return (
     <div className="min-h-screen bg-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
 
       {/* ── Nav ── */}
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-purple-100 shadow-sm">
@@ -307,7 +357,7 @@ export default async function LandingPage() {
             </ul>
           </div>
           <div className="flex-1 max-w-lg w-full">
-            <BrowserMockup src="/Kitchen View.png" alt="Kitchen Board — Live Orders" url="eventifood.com/seller/orders/board" />
+            <BrowserMockup src="/Kitchen View.png" alt="Food truck kitchen display board showing live orders in real time" url="eventifood.com/seller/orders/board" />
           </div>
         </div>
       </section>
@@ -390,7 +440,7 @@ export default async function LandingPage() {
             </ul>
           </div>
           <div className="flex-1 max-w-xs mx-auto">
-            <PhoneMockup src="/Edit Product Details.png" alt="Edit Product Details" />
+            <PhoneMockup src="/Edit Product Details.png" alt="Food van menu management — edit product details on mobile" />
           </div>
         </div>
       </section>
@@ -419,7 +469,7 @@ export default async function LandingPage() {
             </ul>
           </div>
           <div className="flex-1 max-w-lg w-full">
-            <BrowserMockup src="/print menu.png" alt="Print menu with QR codes" url="eventifood.com/print-menu/1" />
+            <BrowserMockup src="/print menu.png" alt="Printable food truck menu with QR codes on every item" url="eventifood.com/print-menu/1" />
           </div>
         </div>
       </section>
@@ -448,7 +498,7 @@ export default async function LandingPage() {
             </ul>
           </div>
           <div className="flex-1 max-w-lg w-full">
-            <BrowserMockup src="/Analytics.png" alt="Sales analytics dashboard" url="eventifood.com/seller/analytics" />
+            <BrowserMockup src="/Analytics.png" alt="Food truck sales analytics dashboard — revenue, top sellers and profit tracking" url="eventifood.com/seller/analytics" />
           </div>
         </div>
       </section>
@@ -482,7 +532,7 @@ export default async function LandingPage() {
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 items-end">
             <div className="text-center space-y-3">
-              <PhoneMockup src="/Customer Order Screen.png" alt="Customer browsing the menu" />
+              <PhoneMockup src="/Customer Order Screen.png" alt="Customer ordering from food truck using QR code — no app needed" />
               <div className="bg-brand-600 text-white rounded-xl px-3 py-2">
                 <p className="text-xs font-bold uppercase tracking-wide mb-0.5">Step 1</p>
                 <p className="text-sm font-semibold">Browse & add to basket</p>
@@ -505,7 +555,7 @@ export default async function LandingPage() {
               </div>
             </div>
             <div className="text-center space-y-3">
-              <PhoneMockup src="/Being Prepared.png" alt="Order being prepared" />
+              <PhoneMockup src="/Being Prepared.png" alt="Food truck order being prepared — live status on customer phone" />
               <div className="bg-orange-500 text-white rounded-xl px-3 py-2">
                 <p className="text-xs font-bold uppercase tracking-wide mb-0.5">Step 3</p>
                 <p className="text-sm font-semibold">Watch it live</p>
@@ -513,7 +563,7 @@ export default async function LandingPage() {
               </div>
             </div>
             <div className="text-center space-y-3">
-              <PhoneMockup src="/ready for collection.png" alt="Ready for collection notification" />
+              <PhoneMockup src="/ready for collection.png" alt="Food truck order ready for collection — customer notified instantly" />
               <div className="bg-green-600 text-white rounded-xl px-3 py-2">
                 <p className="text-xs font-bold uppercase tracking-wide mb-0.5">Step 4</p>
                 <p className="text-sm font-semibold">Phone buzzes: Ready!</p>
@@ -645,6 +695,68 @@ export default async function LandingPage() {
             Open your store free →
           </Link>
           <p className="mt-5 text-sm text-brand-300">No credit card. No setup fee. Cancel anytime.</p>
+        </div>
+      </section>
+
+      {/* ── FAQ ── */}
+      <section className="py-20 bg-gray-50 border-t border-gray-100">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-3">Frequently asked questions</h2>
+            <p className="text-gray-500">Everything food van and food truck owners ask us before signing up.</p>
+          </div>
+          <div className="space-y-6">
+            {[
+              {
+                q: 'What is Eventifood and how does it work for food vans?',
+                a: 'Eventifood is a food van software and ordering platform built specifically for UK food trucks, street food traders, mobile caterers and festival vendors. You get a branded ordering page at yourname.eventifood.com, a printable QR code to display at your van, and a live kitchen display board. Customers scan the QR code, browse your menu, pay on their phone, and get notified when their food is ready — all without downloading an app.',
+              },
+              {
+                q: 'Does Eventifood have a monthly fee?',
+                a: 'No. Eventifood is free to set up and has no monthly subscription fee. On the standard PAYG plan you pay 2% per transaction only when orders come through. If your van is parked up for the winter, you pay absolutely nothing. This makes it ideal for seasonal food trucks, festival traders, and part-year mobile caterers.',
+              },
+              {
+                q: 'Do my customers need to download an app?',
+                a: "No app required — ever. Your customers scan a QR code with their phone camera and your full menu opens instantly in their mobile browser. There's no download, no account creation, and no friction standing between them and placing an order. This is one of the biggest differences between Eventifood and traditional food truck POS systems.",
+              },
+              {
+                q: 'How does Eventifood help with food truck queue management?',
+                a: 'Eventifood eliminates the queue bottleneck entirely. Instead of customers standing at the hatch waiting to order, they browse the menu and pay on their phone while waiting — or even before they arrive. The kitchen receives the order instantly, and customers get a live notification when their food is ready for collection. Van owners consistently report serving 40–60% more customers per hour at events and markets.',
+              },
+              {
+                q: 'Can I use Eventifood at festivals and events?',
+                a: "Yes — Eventifood is designed for exactly this. You can create a dedicated event menu with its own pricing, items and branding, completely separate from your regular menu. Switch it live in minutes before an event and switch back afterwards. It works on any mobile data connection and is optimised for high-volume service at busy festivals, markets and corporate catering events.",
+              },
+              {
+                q: 'What payments can my customers use?',
+                a: 'Customers can pay by card, Apple Pay, Google Pay, and PayPal — all processed securely at the point of ordering. There is no cash handling, no float to manage, and no end-of-night counting. Every payment is recorded digitally and instantly reconciled against your orders.',
+              },
+              {
+                q: 'How is Eventifood different from a standard food truck POS?',
+                a: 'A traditional food truck POS (EPOS) system requires staff to take orders at the hatch — customers still queue, still wait, and cash or card is still handled by the same person making the food. Eventifood shifts order-taking entirely to the customer\'s phone. Staff focus 100% on cooking. The kitchen display shows every order the moment it\'s paid. There is no card machine, no terminal rental, and no monthly software fee.',
+              },
+              {
+                q: 'How long does it take to set up?',
+                a: 'Most food van owners are live within 30 minutes. Register, upload your menu, set your prices, and your QR-code ordering store is ready. No developer needed. No tech skills required.',
+              },
+              {
+                q: 'Does it work for mobile catering and street food markets?',
+                a: 'Yes. Eventifood is used by food truck operators, street food traders, mobile caterers, market stall vendors, festival food vans, and pop-up kitchens across the UK. The platform is built for mobile, outdoor, and high-footfall trading environments where speed and simplicity matter most.',
+              },
+              {
+                q: 'Can I track my food van sales and profit?',
+                a: 'Yes. The analytics dashboard shows your top-selling items, revenue by day or trading period, gross and net profit per item (when you enter cost prices), and your busiest trading hours. You can use this to make smarter decisions about your menu, pricing, and stock ordering.',
+              },
+            ].map(({ q, a }) => (
+              <details key={q} className="group bg-white rounded-2xl border border-gray-200 px-6 py-5 shadow-sm">
+                <summary className="flex items-center justify-between cursor-pointer list-none">
+                  <h3 className="font-bold text-gray-900 text-sm sm:text-base pr-4">{q}</h3>
+                  <span className="text-brand-500 text-xl shrink-0 group-open:rotate-45 transition-transform">+</span>
+                </summary>
+                <p className="mt-4 text-gray-600 text-sm leading-relaxed">{a}</p>
+              </details>
+            ))}
+          </div>
         </div>
       </section>
 
