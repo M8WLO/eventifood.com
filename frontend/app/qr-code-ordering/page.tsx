@@ -84,7 +84,7 @@ export default function QRCodeOrderingPage() {
             {[
               { step: '1', icon: '📷', title: 'Scan the QR code', desc: 'Customer points their camera at your code. Menu opens instantly in their browser — no download, no sign-in.' },
               { step: '2', icon: '🛒', title: 'Browse & customise', desc: 'Full menu with photos, prices, extras and modifiers. Every choice captured perfectly — no back-and-forth with staff.' },
-              { step: '3', icon: '💳', title: 'Pay on their phone', desc: 'Card, Apple Pay, or Google Pay. Payment processed in seconds. Receipt sent by email.' },
+              { step: '3', icon: '💳', title: 'Pay on their phone', desc: 'Card or PayPal, processed in seconds. Apple Pay & Google Pay coming soon via Stripe. Receipt sent by email.' },
               { step: '4', icon: '🔔', title: 'Get notified when ready', desc: 'Their phone buzzes the moment you mark the order ready on your kitchen board. They walk up, collect and go.' },
             ].map((s) => (
               <div key={s.step} className="text-center">

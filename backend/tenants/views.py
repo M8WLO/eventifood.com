@@ -6,8 +6,8 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny, BasePermission
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Tenant
-from .serializers import TenantSerializer, TenantPublicSerializer
+from .models import Tenant, Promotion
+from .serializers import TenantSerializer, TenantPublicSerializer, PromotionSerializer
 from accounts.models import TenantMembership
 
 
@@ -417,3 +417,62 @@ class TenantCopyView(APIView):
             'detail': f"Copied from '{src.slug}' to '{dst.slug}' successfully.",
             'stats': stats,
         })
+
+
+
+class ActivePromotionView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        promo = Promotion.get_active()
+        if not promo:
+            return Response(None)
+        return Response(PromotionSerializer(promo).data)
+
+
+class PromotionListView(APIView):
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request):
+        promos = Promotion.objects.all()
+        return Response(PromotionSerializer(promos, many=True).data)
+
+    def post(self, request):
+        serializer = PromotionSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class PromotionDetailView(APIView):
+    permission_classes = [IsSuperAdmin]
+
+    def get_object(self, pk):
+        try:
+            return Promotion.objects.get(pk=pk)
+        except Promotion.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        promo = self.get_object(pk)
+        if not promo:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(PromotionSerializer(promo).data)
+
+    def patch(self, request, pk):
+        promo = self.get_object(pk)
+        if not promo:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = PromotionSerializer(promo, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, pk):
+        promo = self.get_object(pk)
+        if not promo:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        promo.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

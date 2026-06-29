@@ -335,19 +335,30 @@ class VerifyEmailView(APIView):
 
         # Activate the tenant too
         from accounts.models import TenantMembership
+        from tenants.models import Promotion
         membership = TenantMembership.objects.filter(user=user, role='owner').select_related('tenant').first()
         if membership:
-            membership.tenant.is_active = True
-            membership.tenant.save(update_fields=['is_active'])
+            tenant = membership.tenant
+            tenant.is_active = True
+            update_fields = ['is_active']
+
+            promo = Promotion.get_active()
+            if promo:
+                tenant.trial_expires_at = promo.trial_until
+                tenant.july_giveaway = True
+                update_fields += ['trial_expires_at', 'july_giveaway']
+
+            tenant.save(update_fields=update_fields)
 
         refresh = RefreshToken.for_user(user)
         refresh['email'] = user.email
         refresh['full_name'] = user.full_name
         refresh['is_superadmin'] = user.is_superadmin
+        tenant_slug = membership.tenant.slug if membership else None
         return Response({
             'access': str(refresh.access_token),
             'refresh': str(refresh),
-            'tenant_slug': membership.tenant.slug if membership else None,
+            'tenant_slug': tenant_slug,
         }, status=status.HTTP_200_OK)
 
 

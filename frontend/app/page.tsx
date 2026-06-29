@@ -4,14 +4,14 @@ import Link from 'next/link'
 import PricingSection, { type Plan } from './(platform)/pricing-section'
 
 export const metadata: Metadata = {
-  title: 'Food Van Software & QR Ordering App — No Monthly Fee | Eventifood',
+  title: 'Food Van Software & QR Ordering App — PAYG or Monthly Plans | Eventifood',
   description:
-    "The UK's food van ordering software. Set up a branded QR-code store, live kitchen display board, and queue management for your food truck or mobile catering business. Free to start — pay 2% only when you trade.",
+    "The UK's food van ordering software. Set up a branded QR-code store, live kitchen display board, and queue management for your food truck or mobile catering business. Choose PAYG (2% per transaction, no monthly fee) or a flat monthly plan — whichever suits your turnover.",
   alternates: { canonical: 'https://eventifood.com' },
   openGraph: {
-    title: 'Food Van Software & QR Ordering App — No Monthly Fee | Eventifood',
+    title: 'Food Van Software & QR Ordering App — PAYG or Monthly Plans | Eventifood',
     description:
-      "The UK's food van ordering software. QR ordering, kitchen display, queue management and analytics. Free to set up — 2% per transaction.",
+      "The UK's food van ordering software. QR ordering, kitchen display, queue management and analytics. Choose PAYG or a flat monthly plan — no setup fee.",
     url: 'https://eventifood.com',
   },
 }
@@ -36,6 +36,12 @@ const FALLBACK_PLANS: Plan[] = [
   },
 ]
 
+interface ActivePromotion {
+  banner_headline: string
+  banner_subtext: string
+  banner_cta: string
+}
+
 async function fetchPlans(): Promise<Plan[]> {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -45,6 +51,18 @@ async function fetchPlans(): Promise<Plan[]> {
     return Array.isArray(data) && data.length > 0 ? data : FALLBACK_PLANS
   } catch {
     return FALLBACK_PLANS
+  }
+}
+
+async function fetchActivePromotion(): Promise<ActivePromotion | null> {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    const res = await fetch(`${apiUrl}/api/tenants/promotions/active/`, { next: { revalidate: 300 } })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data && data.banner_headline ? data : null
+  } catch {
+    return null
   }
 }
 
@@ -146,7 +164,7 @@ const sellerFeatures = [
   { icon: '🖨️', title: 'Printable Menus with QR Codes', desc: 'Generate A4/A3/A2 print-ready menus with individual QR codes on every item. Customers scan the item they want and it goes straight into their basket.' },
   { icon: '📦', title: 'Inventory Control', desc: 'Set stock levels per item. Sold-out items disappear from the customer menu automatically. No more apologising at the hatch.' },
   { icon: '📊', title: 'Sales Analytics', desc: "See exactly what's selling, when your busiest periods are, and where your profit is coming from — then make smarter decisions about your menu and stock." },
-  { icon: '💳', title: 'Multi-Provider Payments', desc: 'Accept card, Apple Pay, Google Pay, PayPal and more. You choose which providers suit your business — we handle the routing.' },
+  { icon: '💳', title: 'Multi-Provider Payments', desc: 'Accept card payments and PayPal today. Apple Pay and Google Pay arrive with Stripe Connect — coming soon. You choose which providers suit your business.' },
 ]
 
 const customerBenefits = [
@@ -166,12 +184,12 @@ const throughputPoints = [
 const whyUs = [
   { icon: '⚡', title: 'Live in 30 minutes', desc: 'Register, upload your menu and your QR-code store is ready to trade. No developer needed.' },
   { icon: '📵', title: 'No app for customers', desc: 'Customers order through their phone browser — nothing to download, nothing standing between them and your food.' },
-  { icon: '💳', title: 'Fully cashless', desc: 'Card, Apple Pay, Google Pay, PayPal — take your pick. No cash float, no end-of-night counting.' },
+  { icon: '💳', title: 'Fully cashless', desc: 'Card and PayPal live now. Apple Pay and Google Pay coming soon via Stripe. No cash float, no end-of-night counting.' },
   { icon: '🔔', title: 'Real-time customer alerts', desc: 'Customers get a live notification the moment their order is ready. Stop shouting names over the noise of the crowd.' },
   { icon: '🎨', title: 'Branded to your van', desc: 'Upload your logo, choose your theme colour, and your store looks like you — not a generic checkout page.' },
   { icon: '🎪', title: 'Festival & event ready', desc: 'Create a bespoke event menu for any occasion with custom items, pricing and branding — ready in minutes.' },
   { icon: '📈', title: 'Know your numbers', desc: 'Top sellers, hourly revenue, profit per item — all the data you need to run a tighter, more profitable van.' },
-  { icon: '❄️', title: 'Pay nothing in winter', desc: 'Start free. On PAYG you only pay a small fee when orders come through. Park the van for the winter and pay absolutely nothing.' },
+  { icon: '❄️', title: 'Choose PAYG or monthly', desc: 'Seasonal trader? PAYG means zero cost when you\'re not trading. Trade year-round? A flat monthly plan can lower your cost per order. You decide — and you can switch any time.' },
   { icon: '🔒', title: 'Secure by default', desc: 'Every seller account is protected with email MFA. Your dashboard, your data, your business.' },
   { icon: '🖨️', title: 'Printed QR menus', desc: 'Generate print-ready menus with QR codes on every single item. Stick them on your van, hand them out at the gate, or pin them to tables.' },
   { icon: '📦', title: 'Automatic stock control', desc: 'Running low? Sold out? Items hide themselves from the customer menu automatically so you never disappoint.' },
@@ -205,7 +223,7 @@ const faqJsonLd = {
     {
       '@type': 'Question',
       name: 'Does Eventifood have a monthly fee?',
-      acceptedAnswer: { '@type': 'Answer', text: 'No. Eventifood is free to set up with no monthly subscription fee. On the PAYG plan you pay 2% per transaction only when orders come through. Seasonal food trucks pay nothing in the off-season.' },
+      acceptedAnswer: { '@type': 'Answer', text: 'You choose. The PAYG plan has no monthly fee — you pay 2% per transaction only when orders come through, making it ideal for seasonal food trucks and festival traders who park up in winter and pay nothing in the off-season. If your van trades heavily year-round, a flat monthly plan can lower your overall cost per order. Both plans include the full platform with no feature restrictions.' },
     },
     {
       '@type': 'Question',
@@ -226,7 +244,7 @@ const faqJsonLd = {
 }
 
 export default async function LandingPage() {
-  const plans = await fetchPlans()
+  const [plans, promo] = await Promise.all([fetchPlans(), fetchActivePromotion()])
 
   return (
     <div className="min-h-screen bg-white">
@@ -234,6 +252,37 @@ export default async function LandingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
+
+      {/* ── Promotion Banner (dynamic from admin) ── */}
+      {promo && (
+        <div className="relative bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-gray-900 overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none select-none" aria-hidden="true">
+            <div className="absolute top-0 left-8 w-2 h-6 bg-white/30 rotate-12 rounded-full" />
+            <div className="absolute top-1 left-24 w-1.5 h-4 bg-brand-700/25 -rotate-6 rounded-full" />
+            <div className="absolute bottom-0 left-40 w-2 h-5 bg-white/20 rotate-45 rounded-full" />
+            <div className="absolute top-0 right-32 w-2 h-6 bg-brand-700/20 -rotate-12 rounded-full" />
+            <div className="absolute bottom-1 right-16 w-1.5 h-4 bg-white/30 rotate-6 rounded-full" />
+            <div className="absolute top-1 right-56 w-2 h-5 bg-white/20 rotate-30 rounded-full" />
+          </div>
+          <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-center sm:text-left">
+            <span className="text-xl" aria-hidden="true">🎉</span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+              <span className="font-extrabold text-sm sm:text-base tracking-tight">
+                {promo.banner_headline}
+              </span>
+              <span className="text-xs sm:text-sm text-amber-900 font-medium">
+                {promo.banner_subtext}
+              </span>
+            </div>
+            <Link
+              href="/register"
+              className="shrink-0 bg-gray-900 hover:bg-gray-800 text-white text-xs sm:text-sm font-bold px-4 py-2 rounded-lg transition-colors shadow-sm"
+            >
+              {promo.banner_cta}
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* ── Nav ── */}
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-purple-100 shadow-sm">
@@ -399,7 +448,7 @@ export default async function LandingPage() {
                 {[
                   'Customer scans QR, browses the full menu on their phone',
                   'Places order with customisations — perfectly captured',
-                  'Pays in seconds — card, Apple Pay, Google Pay',
+                  'Pays in seconds — card or PayPal',
                   'Kitchen board lights up instantly — staff start cooking',
                   'Customer steps aside and waits comfortably',
                   'Phone buzzes: "Ready for collection" — they walk up and go',
@@ -544,14 +593,15 @@ export default async function LandingPage() {
                 <div className="text-center px-6">
                   <div className="text-5xl mb-4">💳</div>
                   <p className="text-white font-bold text-sm">Pay securely</p>
-                  <p className="text-gray-400 text-xs mt-2">Card · Apple Pay · Google Pay · PayPal</p>
+                  <p className="text-gray-400 text-xs mt-2">Card · PayPal</p>
+                  <p className="text-gray-500 text-xs mt-1">Apple Pay &amp; Google Pay — coming soon</p>
                   <p className="text-xs text-gray-500 mt-3">Processed in seconds.<br />No cash. No change.</p>
                 </div>
               </div>
               <div className="bg-gold-500 text-white rounded-xl px-3 py-2">
                 <p className="text-xs font-bold uppercase tracking-wide mb-0.5">Step 2</p>
                 <p className="text-sm font-semibold">Pay on their phone</p>
-                <p className="text-xs text-yellow-100 mt-1">Card, Apple Pay, Google Pay or PayPal</p>
+                <p className="text-xs text-yellow-100 mt-1">Card or PayPal · Apple Pay &amp; Google Pay coming soon</p>
               </div>
             </div>
             <div className="text-center space-y-3">
@@ -674,9 +724,15 @@ export default async function LandingPage() {
             <p className="text-lg text-gray-500 max-w-xl mx-auto">Start free on PAYG. Upgrade when you need the extra tools. No hidden fees, no monthly bill when you're not trading.</p>
           </div>
           <PricingSection plans={plans} />
-          <div className="mt-10 bg-brand-700 rounded-2xl p-8 text-white text-center">
-            <p className="font-extrabold text-xl mb-2">Trading seasonally? Pay nothing in the off-season.</p>
-            <p className="text-brand-200 text-sm max-w-xl mx-auto">On the PAYG plan you only pay when orders come through — 2% per transaction. Park the van in November, come back in April. Your store, your menu, and your full order history are exactly where you left them. You paid nothing while you were away.</p>
+          <div className="mt-10 grid sm:grid-cols-2 gap-6">
+            <div className="bg-brand-700 rounded-2xl p-8 text-white text-center">
+              <p className="font-extrabold text-xl mb-2">Seasonal trader? PAYG is made for you.</p>
+              <p className="text-brand-200 text-sm">On PAYG you only pay when orders come through — 2% per transaction. Park the van in November, come back in April. Your store, your menu, and your full order history are exactly where you left them. You paid nothing while you were away.</p>
+            </div>
+            <div className="bg-gray-900 rounded-2xl p-8 text-white text-center">
+              <p className="font-extrabold text-xl mb-2">High-volume van? Monthly can cost less.</p>
+              <p className="text-gray-400 text-sm">If you trade heavily year-round, a flat monthly plan replaces the per-transaction fee entirely — meaning the more orders you take, the more you save compared to PAYG. All plans include every feature: no tier restrictions.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -713,7 +769,7 @@ export default async function LandingPage() {
               },
               {
                 q: 'Does Eventifood have a monthly fee?',
-                a: 'No. Eventifood is free to set up and has no monthly subscription fee. On the standard PAYG plan you pay 2% per transaction only when orders come through. If your van is parked up for the winter, you pay absolutely nothing. This makes it ideal for seasonal food trucks, festival traders, and part-year mobile caterers.',
+                a: "You choose the plan that suits your trading pattern. The PAYG plan has no monthly fee at all — you pay 2% per transaction only when orders come through. If your van is parked up for the winter, you pay absolutely nothing, making it ideal for seasonal food trucks, festival traders, and part-year mobile caterers. If you trade heavily year-round, a flat monthly plan can work out cheaper overall by reducing the per-order cost. Both plans include the full Eventifood platform with no feature restrictions.",
               },
               {
                 q: 'Do my customers need to download an app?',
@@ -729,7 +785,7 @@ export default async function LandingPage() {
               },
               {
                 q: 'What payments can my customers use?',
-                a: 'Customers can pay by card, Apple Pay, Google Pay, and PayPal — all processed securely at the point of ordering. There is no cash handling, no float to manage, and no end-of-night counting. Every payment is recorded digitally and instantly reconciled against your orders.',
+                a: 'Customers can currently pay by card and PayPal — all processed securely at the point of ordering. Apple Pay and Google Pay are coming soon via Stripe Connect. There is no cash handling, no float to manage, and no end-of-night counting. Every payment is recorded digitally and instantly reconciled against your orders.',
               },
               {
                 q: 'How is Eventifood different from a standard food truck POS?',

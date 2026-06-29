@@ -1,6 +1,5 @@
 import { ImageResponse } from 'next/og'
 
-export const runtime = 'edge'
 export const alt = 'Eventifood — Food Van Software & QR Ordering App'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
@@ -128,7 +127,7 @@ export default function Image() {
                     fontWeight: 600,
                   }}
                 >
-                  ✓ {label}
+                  {label}
                 </div>
               ))}
             </div>
@@ -185,10 +184,10 @@ export default function Image() {
               <circle cx="262" cy="188" r="7" fill="#6b7280" />
               {/* Ground shadow */}
               <ellipse cx="170" cy="218" rx="150" ry="8" fill="black" fillOpacity="0.25" />
-              {/* Stars */}
-              <text x="20" y="50" fontSize="18" fill="#fbbf24" fillOpacity="0.7">★</text>
-              <text x="190" y="38" fontSize="14" fill="#a78bfa" fillOpacity="0.8">★</text>
-              <text x="310" y="52" fontSize="20" fill="#fbbf24" fillOpacity="0.6">★</text>
+              {/* Stars as polygons */}
+              <polygon points="20,44 22,50 28,50 23,54 25,60 20,56 15,60 17,54 12,50 18,50" fill="#fbbf24" fillOpacity="0.7" transform="scale(0.7) translate(10,20)" />
+              <polygon points="20,44 22,50 28,50 23,54 25,60 20,56 15,60 17,54 12,50 18,50" fill="#a78bfa" fillOpacity="0.8" transform="scale(0.5) translate(360,30)" />
+              <polygon points="20,44 22,50 28,50 23,54 25,60 20,56 15,60 17,54 12,50 18,50" fill="#fbbf24" fillOpacity="0.6" transform="scale(0.8) translate(360,30)" />
             </svg>
           </div>
 

@@ -113,7 +113,7 @@ export default function FoodTruckPOSPage() {
             {[
               { icon: '📱', title: 'Customer scans your QR code', desc: 'No app download. Your full menu opens in their phone browser the moment they scan. They browse, customise and pay — all before they reach the front.' },
               { icon: '🖥️', title: 'Kitchen display shows every order', desc: 'Paid orders appear on your kitchen screen instantly. One tap marks it preparing. Another marks it ready. The customer gets a notification — staff never call a name.' },
-              { icon: '💳', title: 'Card, Apple Pay, Google Pay', desc: 'Payments happen on the customer\'s phone. No card terminal to rent, no card machine to share. Every transaction is digital and instantly reconciled.' },
+              { icon: '💳', title: 'Card & PayPal payments', desc: 'Payments happen on the customer\'s phone. No card terminal to rent. Apple Pay & Google Pay coming soon via Stripe. Every transaction is digital and instantly reconciled.' },
               { icon: '📊', title: 'Analytics at end of service', desc: 'See exactly what sold, when your peak was, and what your profit margin looked like. More insight than any traditional till system — with less admin.' },
             ].map((step) => (
               <div key={step.title} className="bg-white rounded-2xl p-7 border border-gray-200 shadow-sm">

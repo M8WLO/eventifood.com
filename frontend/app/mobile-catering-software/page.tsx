@@ -131,7 +131,7 @@ export default function MobileCateringSoftwarePage() {
               { icon: '📊', title: 'Sales analytics', desc: 'Revenue, top sellers, profit per item, busiest hours. The data you need to run a tighter, more profitable operation.' },
               { icon: '📦', title: 'Stock management', desc: 'Set stock levels per item. Sold-out items disappear from the customer menu automatically. No apologising at the hatch.' },
               { icon: '🖨️', title: 'Print menus with QR codes', desc: 'Generate professional A4/A3/A2 menus with a QR code on every item. Display at your pitch or hand out at the gate.' },
-              { icon: '💳', title: 'Cashless payments', desc: 'Card, Apple Pay, Google Pay and PayPal. No cash float, no end-of-night counting, no contamination risk.' },
+              { icon: '💳', title: 'Cashless payments', desc: 'Card and PayPal live now. Apple Pay & Google Pay coming soon via Stripe. No cash float, no counting, no contamination risk.' },
               { icon: '❄️', title: 'No charge in the off-season', desc: 'PAYG pricing means you pay 2% per transaction and nothing else. Park up for the winter and your bill is £0.' },
             ].map((f) => (
               <div key={f.title} className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm flex gap-4">

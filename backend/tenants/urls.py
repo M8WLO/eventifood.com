@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     TenantRegistrationView, TenantDetailView, TenantPublicView, MyTenantView,
     TenantAdminListView, TenantAdminDetailView, TenantAdminMembersView, TenantAdminOrdersView,
-    TenantCopyView,
+    TenantCopyView, ActivePromotionView, PromotionListView, PromotionDetailView,
 )
 
 urlpatterns = [
@@ -15,4 +15,7 @@ urlpatterns = [
     path('admin/<slug:slug>/', TenantAdminDetailView.as_view(), name='tenant-admin-detail'),
     path('admin/<slug:slug>/members/', TenantAdminMembersView.as_view(), name='tenant-admin-members'),
     path('admin/<slug:slug>/orders/', TenantAdminOrdersView.as_view(), name='tenant-admin-orders'),
+    path('promotions/active/', ActivePromotionView.as_view(), name='promotion-active'),
+    path('promotions/', PromotionListView.as_view(), name='promotion-list'),
+    path('promotions/<int:pk>/', PromotionDetailView.as_view(), name='promotion-detail'),
 ]

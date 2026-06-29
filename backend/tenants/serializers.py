@@ -1,6 +1,14 @@
 from rest_framework import serializers
-from .models import Tenant
+from .models import Tenant, Promotion
 from accounts.models import TenantMembership
+
+
+class PromotionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Promotion
+        fields = ['id', 'name', 'banner_headline', 'banner_subtext', 'banner_cta',
+                  'start_date', 'end_date', 'trial_until', 'is_active', 'created_at']
+        read_only_fields = ['id', 'created_at']
 
 
 class TenantSerializer(serializers.ModelSerializer):

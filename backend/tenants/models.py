@@ -4,6 +4,34 @@ import qrcode.image.svg
 from django.db import models
 
 
+class Promotion(models.Model):
+    name = models.CharField(max_length=100)
+    banner_headline = models.CharField(max_length=200)
+    banner_subtext = models.CharField(max_length=400)
+    banner_cta = models.CharField(max_length=80, default='Claim free months →')
+    start_date = models.DateField()
+    end_date = models.DateField()
+    trial_until = models.DateField()
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-start_date']
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def get_active(cls):
+        from datetime import date
+        today = date.today()
+        return cls.objects.filter(
+            is_active=True,
+            start_date__lte=today,
+            end_date__gte=today,
+        ).first()
+
+
 class Tenant(models.Model):
     slug = models.SlugField(unique=True, max_length=50)
     name = models.CharField(max_length=100)
@@ -28,6 +56,7 @@ class Tenant(models.Model):
     trial_expires_at = models.DateField(null=True, blank=True)
     account_number = models.CharField(max_length=20, unique=True, blank=True, default='')
     show_event_menu_name = models.BooleanField(default=False)
+    july_giveaway = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['name']

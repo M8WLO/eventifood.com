@@ -115,7 +115,7 @@ const jsonLd = {
         'Food truck queue management',
         'Sales analytics and profit tracking',
         'Printable menus with QR codes',
-        'Cashless payments — card, Apple Pay, Google Pay',
+        'Cashless payments — card and PayPal',
         'Event and festival menus',
         'Inventory and stock management',
         'Customer order notifications',
