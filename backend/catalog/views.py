@@ -369,6 +369,7 @@ class PublicMenuView(APIView):
         return Response({
             'id': menu.pk,
             'name': menu.name,
+            'size': menu.size,
             'items': resolved,
             'banner': request.build_absolute_uri(tenant.banner.url) if tenant.banner else None,
             'store_name': tenant.name,

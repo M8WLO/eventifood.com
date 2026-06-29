@@ -33,6 +33,7 @@ interface MenuItem {
 interface MenuData {
   id: number
   name: string
+  size: string
   items: MenuItem[]
   banner: string | null
   store_name: string
@@ -51,10 +52,7 @@ export default function PublicMenuPage() {
     api.defaults.headers.common['X-Tenant-Slug'] = slug
     api.get('/api/catalog/public-menu/')
       .then((r) => { setMenu(r.data); setLoading(false) })
-      .catch((e) => {
-        setNotFound(true)
-        setLoading(false)
-      })
+      .catch(() => { setNotFound(true); setLoading(false) })
   }, [slug])
 
   if (loading) return (
@@ -73,68 +71,98 @@ export default function PublicMenuPage() {
   )
 
   const colors = THEME_COLORS[menu.theme] || THEME_COLORS.default
+  const cols = menu.size === 'a2' ? 4 : menu.size === 'a3' ? 3 : 2
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="sticky top-0 z-10" style={{ backgroundColor: colors.dark }}>
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
+    <div className="min-h-screen bg-gray-100">
+      {/* Header — matches PDF header style */}
+      <div style={{ backgroundColor: '#111827' }}>
+        <div className="max-w-5xl mx-auto px-6 py-5 flex items-center gap-6">
           {menu.banner ? (
-            <img src={menu.banner} alt={menu.store_name} className="h-10 object-contain rounded" style={{ maxWidth: 120 }} />
+            <img src={menu.banner} alt={menu.store_name} className="h-14 object-contain rounded-lg" style={{ maxWidth: 180 }} />
           ) : (
-            <span className="font-bold text-white text-lg">{menu.store_name}</span>
+            <h1 className="text-2xl font-extrabold tracking-tight text-white">{menu.store_name}</h1>
           )}
           <div className="flex-1" />
+          <div className="text-right">
+            <p className="text-white/50 text-xs uppercase tracking-widest mb-0.5">Menu</p>
+            <p className="text-white font-bold">{menu.name}</p>
+          </div>
           <Link
             href={`/store/${slug}`}
-            className="text-sm font-semibold px-4 py-1.5 rounded-lg bg-white/20 text-white hover:bg-white/30 transition-colors"
+            className="ml-4 text-sm font-semibold px-4 py-2 rounded-lg text-white transition-colors"
+            style={{ backgroundColor: colors.primary }}
           >
-            Order now
+            Order now →
           </Link>
         </div>
-        <div className="border-t border-white/10 px-4 py-2 max-w-2xl mx-auto">
-          <p className="text-white/70 text-xs">{menu.name}</p>
+      </div>
+
+      {/* Item grid */}
+      <div className="max-w-5xl mx-auto px-6 py-6">
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${cols}, 1fr)`,
+            gap: '16px',
+          }}
+        >
+          {menu.items.map((item) => (
+            <div
+              key={`${item.type}-${item.id}`}
+              className="border border-gray-200 rounded-xl flex flex-col bg-white shadow-sm"
+            >
+              {/* Photo + QR row — identical layout to the PDF */}
+              <div className="flex rounded-t-xl overflow-hidden" style={{ height: 120 }}>
+                {item.photo ? (
+                  <img src={item.photo} alt={item.name} className="flex-1 object-cover" />
+                ) : (
+                  <div className="flex-1 flex items-center justify-center bg-gray-100">
+                    <span className="text-3xl">🍽️</span>
+                  </div>
+                )}
+                {item.qr_code_svg ? (
+                  <div
+                    className="shrink-0 [&>svg]:w-full [&>svg]:h-full border-l border-gray-200 bg-white"
+                    style={{ width: 120, height: 120 }}
+                    dangerouslySetInnerHTML={{ __html: item.qr_code_svg }}
+                  />
+                ) : (
+                  <div className="shrink-0 bg-gray-100 flex items-center justify-center text-xs text-gray-400" style={{ width: 120 }}>
+                    No QR
+                  </div>
+                )}
+              </div>
+
+              {/* Details */}
+              <div className="flex-1 flex flex-col p-3">
+                <p className="font-bold text-gray-900 text-sm leading-tight">{item.name}</p>
+                {item.description && (
+                  <p className="text-gray-500 text-xs mt-0.5 leading-snug line-clamp-2">{item.description}</p>
+                )}
+                <div className="mt-auto pt-2">
+                  {item.price ? (
+                    <p className="text-lg font-extrabold text-gray-900">£{Number(item.price).toFixed(2)}</p>
+                  ) : (
+                    <p className="text-sm text-gray-400 italic">See menu</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Items */}
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-3">
-        {menu.items.map((item) => (
-          <div key={`${item.type}-${item.id}`} className="bg-white rounded-xl shadow-sm overflow-hidden flex">
-            {item.photo && (
-              <img
-                src={item.photo}
-                alt={item.name}
-                className="w-28 object-cover shrink-0"
-              />
-            )}
-            <div className="flex-1 p-4 flex flex-col justify-between min-w-0">
-              <div>
-                <p className="font-semibold text-gray-900 leading-tight">{item.name}</p>
-                {item.description && (
-                  <p className="text-sm text-gray-500 mt-1 leading-snug line-clamp-2">{item.description}</p>
-                )}
-              </div>
-              <div className="flex items-end justify-between gap-2 mt-3">
-                <p className="font-bold text-gray-900">
-                  {item.price ? `£${Number(item.price).toFixed(2)}` : <span className="text-gray-400 font-normal text-sm italic">See menu</span>}
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Footer CTA */}
-      <div className="max-w-2xl mx-auto px-4 pb-10 text-center">
+      {/* Footer */}
+      <div className="max-w-5xl mx-auto px-6 pb-10 flex items-center justify-between border-t border-gray-200 pt-4 mt-2">
+        <p className="text-xs text-gray-400">Scan any item QR code to add it directly to your order</p>
         <Link
           href={`/store/${slug}`}
-          className="inline-block text-white font-semibold px-8 py-3 rounded-xl text-sm transition-colors"
+          className="text-sm font-semibold px-6 py-2.5 rounded-xl text-white transition-colors"
           style={{ backgroundColor: colors.primary }}
         >
           Order online →
         </Link>
-        <p className="text-xs text-gray-400 mt-3">Scan a QR code at the counter to add items directly to your order</p>
       </div>
     </div>
   )
