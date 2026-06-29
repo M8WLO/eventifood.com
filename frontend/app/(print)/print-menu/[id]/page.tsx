@@ -42,7 +42,19 @@ export default function PrintMenuPage() {
       ])
 
       const el = menuRef.current
-      const scale = 2 // retina quality
+      const scale = 2
+
+      // Measure item card positions relative to the container BEFORE rendering.
+      // getBoundingClientRect() is viewport-relative but the difference cancels out.
+      const containerRect = el.getBoundingClientRect()
+      const cardBounds = Array.from(el.querySelectorAll('.item-card')).map((card) => {
+        const r = card.getBoundingClientRect()
+        return {
+          top: (r.top - containerRect.top) * scale,
+          bottom: (r.bottom - containerRect.top) * scale,
+        }
+      })
+
       const canvas = await html2canvas(el, {
         scale,
         useCORS: true,
@@ -51,30 +63,51 @@ export default function PrintMenuPage() {
         logging: false,
       })
 
-      const imgW = A4_W_MM
-      const imgH = (canvas.height / canvas.width) * imgW
-      const pageH = A4_H_MM
+      // px → mm conversion based on A4 width
+      const pxToMm = A4_W_MM / canvas.width
+      // A4 page height expressed in canvas pixels
+      const pageHeightPx = A4_H_MM / pxToMm
+
+      // Build page-cut Y positions that never slice through an item card.
+      // For each natural cut point, if it lands inside a card, move it to that
+      // card's top (pushing the card entirely to the next page).
+      // Safety: if a card is taller than a full page we cut through it anyway.
+      const cuts: number[] = [0]
+      let pageStart = 0
+
+      while (pageStart < canvas.height) {
+        let pageEnd = pageStart + pageHeightPx
+        if (pageEnd >= canvas.height) break
+
+        // Find a card that straddles this cut (starts on current page, ends on next)
+        const split = cardBounds.find(
+          (c) => c.top > pageStart && c.top < pageEnd && c.bottom > pageEnd
+        )
+        if (split) pageEnd = split.top
+
+        // Guard against zero-advance (card taller than a full page)
+        if (pageEnd <= pageStart) pageEnd = pageStart + pageHeightPx
+
+        cuts.push(pageEnd)
+        pageStart = pageEnd
+      }
+
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
 
-      let yOffset = 0
-      let remainingH = imgH
-
-      while (remainingH > 0) {
-        const sliceH = Math.min(remainingH, pageH)
-        const srcY = ((imgH - remainingH) / imgH) * canvas.height
-        const srcH = (sliceH / imgH) * canvas.height
+      for (let i = 0; i < cuts.length; i++) {
+        const sliceTopPx = cuts[i]
+        const sliceBottomPx = i + 1 < cuts.length ? cuts[i + 1] : canvas.height
+        const sliceHeightPx = sliceBottomPx - sliceTopPx
+        const sliceHeightMm = sliceHeightPx * pxToMm
 
         const sliceCanvas = document.createElement('canvas')
         sliceCanvas.width = canvas.width
-        sliceCanvas.height = srcH
+        sliceCanvas.height = sliceHeightPx
         const ctx = sliceCanvas.getContext('2d')!
-        ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH)
+        ctx.drawImage(canvas, 0, sliceTopPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx)
 
-        if (yOffset > 0) pdf.addPage()
-        pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, sliceH)
-
-        remainingH -= sliceH
-        yOffset += sliceH
+        if (i > 0) pdf.addPage()
+        pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, A4_W_MM, sliceHeightMm)
       }
 
       pdf.save(`${menu.store_name} - ${menu.name}.pdf`)
