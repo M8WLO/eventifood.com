@@ -184,33 +184,39 @@ export default function PrintMenuPage() {
         style={{ maxWidth: '900px' }}
       >
         {/* Header */}
-        <div className="menu-header bg-gray-900 text-white px-8 py-6 flex items-center gap-6">
+        <div className="menu-header bg-gray-900 text-white px-8 py-8 flex items-center gap-8" style={{ minHeight: 132 }}>
+          {/* Left: store logo */}
           {menu.banner ? (
-            <img src={menu.banner} alt={menu.store_name} className="h-16 object-contain rounded-lg" style={{ maxWidth: 200 }} />
+            <img src={menu.banner} alt={menu.store_name} className="h-20 object-contain rounded-xl shrink-0" style={{ maxWidth: 230 }} />
           ) : (
-            <h1 className="text-3xl font-extrabold tracking-tight">{menu.store_name}</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight shrink-0">{menu.store_name}</h1>
           )}
+
           <div className="flex-1" />
-          <div className="text-right">
-            <p className="text-white/60 text-xs uppercase tracking-widest mb-0.5">Menu</p>
-            <p className="text-white font-bold text-lg">{menu.name}</p>
-            <p className="text-white/50 text-xs mt-1">Order on your phone — scan the QR code below</p>
+
+          {/* Right: menu label + QR side by side */}
+          <div className="flex items-center gap-6 shrink-0">
+            <div className="text-right">
+              <p className="text-white/50 text-xs uppercase tracking-widest mb-1">Menu</p>
+              <p className="text-white font-extrabold text-2xl leading-tight">{menu.name}</p>
+              <p className="text-white/40 text-xs mt-2 leading-relaxed">
+                Scan the QR code to open<br />the app and place your order
+              </p>
+            </div>
+            {menu.store_qr_code_svg && (
+              <div
+                className="bg-white rounded-2xl shadow-xl shrink-0"
+                style={{ width: 160, height: 160, padding: 10 }}
+              >
+                <div
+                  className="[&>svg]:w-full [&>svg]:h-full"
+                  style={{ width: '100%', height: '100%' }}
+                  dangerouslySetInnerHTML={{ __html: menu.store_qr_code_svg }}
+                />
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Store QR hero */}
-        {menu.store_qr_code_svg && (
-          <div className="flex flex-col items-center py-6 px-8 border-b border-gray-200 bg-gray-50">
-            <div
-              className="[&>svg]:w-full [&>svg]:h-full bg-white rounded-xl border border-gray-200 p-2 shadow-sm"
-              style={{ width: 150, height: 150 }}
-              dangerouslySetInnerHTML={{ __html: menu.store_qr_code_svg }}
-            />
-            <p className="mt-3 text-sm font-medium text-gray-600 text-center max-w-xs">
-              Scan this code to open the app, or scan any item below to start your order
-            </p>
-          </div>
-        )}
 
         {/* Item grid */}
         <div
