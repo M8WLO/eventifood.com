@@ -16,8 +16,7 @@ export function getToken(): string | undefined {
 }
 
 export function setToken(access: string, refresh: string): void {
-  // access token expires with JWT exp; refresh lives 7 days
-  Cookies.set(ACCESS_KEY, access, { expires: 1, sameSite: 'lax' })
+  Cookies.set(ACCESS_KEY, access, { expires: 7, sameSite: 'lax' })
   Cookies.set(REFRESH_KEY, refresh, { expires: 7, sameSite: 'lax' })
 }
 

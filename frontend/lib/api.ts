@@ -19,14 +19,14 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Response interceptor — clear token on 401
+// Response interceptor — clear token on 401, but don't redirect if already on /login
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       Cookies.remove('access_token')
       Cookies.remove('refresh_token')
-      if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
         window.location.href = '/login'
       }
     }

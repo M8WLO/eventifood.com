@@ -231,7 +231,7 @@ class TenantCopyView(APIView):
         from django.db import transaction
         from django.conf import settings as django_settings
         from accounts.models import User
-        from catalog.models import Category, Product, ProductVariation
+        from catalog.models import Category, Product, ProductVariation, ProductExtra, GlobalExtra
         from orders.models import Order, OrderItem, OrderItemExtra
 
         from_email = request.data.get('from_email', '').strip()
@@ -273,7 +273,7 @@ class TenantCopyView(APIView):
             shutil.copy2(src_path, dst_path)
             return new_name
 
-        stats = {'categories': 0, 'products': 0, 'variations': 0, 'orders': 0}
+        stats = {'categories': 0, 'products': 0, 'variations': 0, 'global_extras': 0, 'orders': 0}
 
         with transaction.atomic():
             # --- Settings ---
@@ -297,13 +297,12 @@ class TenantCopyView(APIView):
                 cat_map[cat.id] = new_cat
                 stats['categories'] += 1
 
-            # --- Products + Variations ---
+            # --- Products + Variations + Extras ---
+            # Note: dst categories were deleted above which cascades to their products.
             var_map = {}
-            Product.objects.filter(tenant=dst).delete()
-            for prod in Product.objects.filter(tenant=src).order_by('display_order'):
+            for prod in Product.objects.filter(category__tenant=src).order_by('display_order').prefetch_related('variations', 'extras'):
                 new_photo = copy_media(prod.photo.name if prod.photo else '', 'products')
                 new_prod = Product.objects.create(
-                    tenant=dst,
                     category=cat_map.get(prod.category_id),
                     name=prod.name,
                     description=prod.description,
@@ -329,6 +328,28 @@ class TenantCopyView(APIView):
                     )
                     var_map[var.id] = new_var
                     stats['variations'] += 1
+
+                for extra in prod.extras.all():
+                    ProductExtra.objects.create(
+                        product=new_prod,
+                        name=extra.name,
+                        additional_price=extra.additional_price,
+                        is_available=extra.is_available,
+                    )
+
+            # --- Global Extras ---
+            dst.global_extras.all().delete()
+            for ge in src.global_extras.all().order_by('display_order'):
+                new_ge_photo = copy_media(ge.photo.name if ge.photo else '', 'extras')
+                GlobalExtra.objects.create(
+                    tenant=dst,
+                    name=ge.name,
+                    description=ge.description,
+                    price=ge.price,
+                    photo=new_ge_photo or None,
+                    is_available=ge.is_available,
+                    display_order=ge.display_order,
+                )
 
             # --- Orders ---
             if copy_orders:
