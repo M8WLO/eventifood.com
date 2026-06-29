@@ -38,7 +38,7 @@ export default function PrintMenusPage() {
   useEffect(() => { load() }, [load])
 
   const startNew = () => {
-    setDesigning({ id: 0, name: '', size: 'a4', items: [], updated_at: '' })
+    setDesigning({ id: 0, name: '', size: 'a4', items: [], is_default: false, is_web_facing: false, updated_at: '' })
     setDraftName('')
     setDraftSize('a4')
     setDraftItems([])
