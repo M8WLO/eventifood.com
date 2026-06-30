@@ -16,6 +16,7 @@ Multi-tenant food truck ordering platform. Sellers get their own subdomain (acme
 
 - Always check the current branch before committing — web platform changes go to `main`/`staging`, POS changes go to `eventifood-pro-plus`.
 - After deploying any change to production (main), always ask: "Do you want me to sync these changes to staging as well?"
+- After every `railway up`, monitor the build automatically using Railway GraphQL (`buildLogs` + polling deployment status). If the build fails, read the error, fix it, and redeploy without waiting for the user to report it.
 
 ## Stack
 - **Frontend**: Next.js 15 App Router + TypeScript + Tailwind CSS (`/frontend`)
