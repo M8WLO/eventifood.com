@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -27,6 +29,8 @@ interface PlatformStats {
 interface PlatformConfig {
   mfa_required: boolean
   sandbox_mode: boolean
+  health_check_emails: string
+  health_check_subject: string
   updated_at: string
 }
 
@@ -74,6 +78,10 @@ export default function SuperAdminPage() {
   const [deleteUserMsg, setDeleteUserMsg] = useState<string | null>(null)
   const [deleteUserRunning, setDeleteUserRunning] = useState(false)
   const [sandboxSaving, setSandboxSaving] = useState(false)
+  const [healthEmails, setHealthEmails] = useState('')
+  const [healthSubject, setHealthSubject] = useState('')
+  const [healthSaving, setHealthSaving] = useState(false)
+  const [healthSaved, setHealthSaved] = useState(false)
 
   const resequenceAll = async () => {
     if (!confirm('Resequence daily order numbers across all tenants? This fixes any duplicate #0001s for the last 18 hours of orders.')) return
@@ -170,6 +178,21 @@ export default function SuperAdminPage() {
     }
   }
 
+  const saveHealthCheckConfig = async () => {
+    setHealthSaving(true)
+    setHealthSaved(false)
+    try {
+      await api.patch('/api/auth/admin/platform-config/', {
+        health_check_emails: healthEmails,
+        health_check_subject: healthSubject,
+      })
+      setHealthSaved(true)
+      setTimeout(() => setHealthSaved(false), 3000)
+    } finally {
+      setHealthSaving(false)
+    }
+  }
+
   useEffect(() => {
     api.get('/api/tenants/admin/')
       .then((r) => setTenants(r.data))
@@ -178,7 +201,11 @@ export default function SuperAdminPage() {
       .then((r) => setStats(r.data))
       .catch(() => {})
     api.get('/api/auth/admin/platform-config/')
-      .then((r) => setPlatformConfig(r.data))
+      .then((r) => {
+        setPlatformConfig(r.data)
+        setHealthEmails(r.data.health_check_emails ?? '')
+        setHealthSubject(r.data.health_check_subject ?? '')
+      })
       .catch(() => {})
     api.get('/api/subscriptions/platform-features/')
       .then((r) => setFeatureOverrides(r.data))
@@ -275,6 +302,49 @@ export default function SuperAdminPage() {
                   {platformConfig?.sandbox_mode ? 'Sandbox (test mode)' : 'Live'}
                 </span>
               </p>
+            </div>
+          </div>
+
+          {/* Health check settings */}
+          <div className="card space-y-4">
+            <div>
+              <h2 className="font-semibold text-gray-800">Hourly health report</h2>
+              <p className="text-sm text-gray-500 mt-0.5">
+                The external GitHub Actions monitor sends an HTML health report every hour. Configure who receives it and the email subject prefix.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Report recipients</label>
+                <textarea
+                  rows={2}
+                  value={healthEmails}
+                  onChange={(e) => setHealthEmails(e.target.value)}
+                  placeholder="email1@example.com, email2@example.com"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+                />
+                <p className="text-xs text-gray-400 mt-1">Comma-separated — all addresses receive the hourly report.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email subject prefix</label>
+                <input
+                  type="text"
+                  value={healthSubject}
+                  onChange={(e) => setHealthSubject(e.target.value)}
+                  placeholder="Eventifood Health Report"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+              <div className="flex items-center gap-3 pt-1">
+                <button
+                  onClick={saveHealthCheckConfig}
+                  disabled={healthSaving}
+                  className="btn-primary text-sm disabled:opacity-50"
+                >
+                  {healthSaving ? 'Saving…' : 'Save'}
+                </button>
+                {healthSaved && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
+              </div>
             </div>
           </div>
 
