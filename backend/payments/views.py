@@ -414,8 +414,15 @@ class CreateCheckoutSessionView(APIView):
 
         # Create Stripe Checkout Session
         frontend_url = os.environ.get('FRONTEND_URL', 'https://eventifood.com')
-        # PAYG: 2% platform fee on the discounted total. Own plan: 0%.
-        platform_fee_pence = int(discounted_total * Decimal('0.02') * 100) if tenant.payment_mode == 'payg' else 0
+        # PAYG: platform fee taken from the tenant's plan. Own plan (subscription): 0%.
+        if tenant.payment_mode == 'payg':
+            try:
+                fee_percent = tenant.tenant_plan.plan.platform_fee_percent
+            except Exception:
+                fee_percent = Decimal('2.00')
+            platform_fee_pence = int(discounted_total * fee_percent / 100 * 100)
+        else:
+            platform_fee_pence = 0
         s = _stripe_client()
         # Add a discount line item if applicable (negative Stripe coupon approach)
         session_kwargs = {}
@@ -680,6 +687,15 @@ class PayPalCheckoutCreateView(APIView):
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         order = _create_order_record(tenant, parsed)
+
+        # Demo / sandbox shortcut — skip real PayPal and confirm immediately
+        if _sandbox_active() or getattr(tenant, 'is_demo', False):
+            _activate_order(order)
+            return Response({
+                'order_number': order.order_number,
+                'paypal_order_id': f'demo_{order.order_number}',
+                'approval_url': f'https://{tenant.slug}.eventifood.com/store/{tenant.slug}/order/{order.order_number}?paid=1',
+            })
 
         frontend_url = os.environ.get('FRONTEND_URL', 'https://eventifood.com')
         backend_url = os.environ.get('BACKEND_URL', request.build_absolute_uri('/').rstrip('/'))
