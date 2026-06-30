@@ -20,6 +20,12 @@ class Order(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='placed')
     total = models.DecimalField(max_digits=10, decimal_places=2)
     notes = models.TextField(blank=True)
+    source = models.CharField(
+        max_length=10,
+        choices=[('app', 'App'), ('pos', 'POS')],
+        default='app',
+    )
+    pos_device_number = models.PositiveIntegerField(null=True, blank=True)
     stripe_session_id = models.CharField(max_length=200, blank=True, default='')
     paypal_order_id = models.CharField(max_length=200, blank=True, default='')
     discount_code = models.CharField(max_length=50, blank=True, default='')
