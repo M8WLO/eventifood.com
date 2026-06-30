@@ -2,6 +2,21 @@
 
 Multi-tenant food truck ordering platform. Sellers get their own subdomain (acme.eventifood.com) via wildcard CNAME + Next.js header routing. Single Railway deployment — no per-tenant Railway services.
 
+## Branch structure — CRITICAL
+
+| Branch | Purpose |
+|--------|---------|
+| `main` | **Production web platform** — eventifood.com (Next.js + Django). All main site features, homepage, seller dashboard, customer storefront, payments. Deploy via `railway up`. |
+| `staging` | **Staging / test** — mirrors main, used to test before promoting to production. |
+| `eventifood-pro-plus` | **Eventifood Pro Plus POS system** — a completely separate Electron-based offline/online POS product (`/pos` directory). NEVER commit main site changes here. POS work only. |
+
+**Rule: never commit web platform changes to `eventifood-pro-plus`. Never commit POS changes to `main` or `staging`.**
+
+## Claude behaviour rules
+
+- Always check the current branch before committing — web platform changes go to `main`/`staging`, POS changes go to `eventifood-pro-plus`.
+- After deploying any change to production (main), always ask: "Do you want me to sync these changes to staging as well?"
+
 ## Stack
 - **Frontend**: Next.js 15 App Router + TypeScript + Tailwind CSS (`/frontend`)
 - **Backend**: Django 5 + DRF + JWT auth (`/backend`)
