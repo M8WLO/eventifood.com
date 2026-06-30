@@ -1,0 +1,37 @@
+name: Platform Health Check
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # every hour on the hour
+  workflow_dispatch:        # allow manual trigger from GitHub UI
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run health check
+        env:
+          FRONTEND_URL: https://eventifood.com
+          BACKEND_URL: https://backend-production-9e5c.up.railway.app
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          RAILWAY_PROJECT_ID: d7f20f14-393c-4f13-9d62-629552dabe04
+          RAILWAY_ENVIRONMENT_ID: 5018b358-536e-4115-850d-5088708468c0
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+          HEALTH_CHECK_EMAILS: ${{ secrets.HEALTH_CHECK_EMAILS }}
+          HEALTH_CHECK_SUBJECT: ${{ secrets.HEALTH_CHECK_SUBJECT }}
+        run: python .github/workflows/monitor.py

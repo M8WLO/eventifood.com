@@ -296,6 +296,8 @@ class PlatformConfigView(APIView):
         return {
             'mfa_required': config.mfa_required,
             'sandbox_mode': config.sandbox_mode,
+            'health_check_emails': config.health_check_emails,
+            'health_check_subject': config.health_check_subject,
             'updated_at': config.updated_at,
         }
 
@@ -308,6 +310,10 @@ class PlatformConfigView(APIView):
             config.mfa_required = bool(request.data['mfa_required'])
         if 'sandbox_mode' in request.data:
             config.sandbox_mode = bool(request.data['sandbox_mode'])
+        if 'health_check_emails' in request.data:
+            config.health_check_emails = request.data['health_check_emails']
+        if 'health_check_subject' in request.data:
+            config.health_check_subject = request.data['health_check_subject']
         config.save()
         return Response(self._serialize(config))
 
@@ -349,6 +355,13 @@ class VerifyEmailView(APIView):
                 update_fields += ['trial_expires_at', 'july_giveaway']
 
             tenant.save(update_fields=update_fields)
+
+            if promo and promo.plan:
+                from subscriptions.models import TenantPlan
+                TenantPlan.objects.update_or_create(
+                    tenant=tenant,
+                    defaults={'plan': promo.plan},
+                )
 
         refresh = RefreshToken.for_user(user)
         refresh['email'] = user.email

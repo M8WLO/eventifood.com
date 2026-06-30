@@ -59,6 +59,14 @@ class TenantMembership(models.Model):
 class PlatformConfig(models.Model):
     mfa_required = models.BooleanField(default=True)
     sandbox_mode = models.BooleanField(default=False)
+    health_check_emails = models.TextField(
+        blank=True, default='filemakers@gmail.com',
+        help_text='Comma-separated list of addresses to receive hourly health reports.',
+    )
+    health_check_subject = models.CharField(
+        max_length=200, blank=True, default='Eventifood Health Report',
+        help_text='Subject prefix used in health report emails.',
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -68,6 +76,9 @@ class PlatformConfig(models.Model):
     def get(cls):
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
+
+    def get_health_check_email_list(self):
+        return [e.strip() for e in self.health_check_emails.split(',') if e.strip()]
 
 
 class EmailOTP(models.Model):
