@@ -6,7 +6,7 @@ import PricingSection, { type Plan } from './(platform)/pricing-section'
 export const metadata: Metadata = {
   title: 'Throw Away Your Card Machine — The Ultimate Food Van Solution | Eventifood',
   description:
-    "The UK's food van platform. Runs on tablet, Raspberry Pi or any PC — no dedicated till or POS hardware needed. Works with SumUp, PayPal and Stripe. Go fully cashless, serve queues 6× faster. From £19/month.",
+    "The UK's food van platform. Runs on tablet, Raspberry Pi or any PC — no dedicated till or POS hardware needed. Works with SumUp, PayPal and Stripe. Choose to go fully cashless, serve queues 6× faster. From £19/month.",
   alternates: { canonical: 'https://eventifood.com' },
   openGraph: {
     title: 'Throw Away Your Card Machine — The Ultimate Food Van Solution | Eventifood',
@@ -184,7 +184,7 @@ const throughputPoints = [
 const whyUs = [
   { icon: '⚡', title: 'Live in 30 minutes', desc: 'Register, upload your menu and your QR-code store is ready to trade. No developer needed.' },
   { icon: '📵', title: 'No app for customers', desc: 'Customers order through their phone browser — nothing to download, nothing standing between them and your food.' },
-  { icon: '💳', title: 'Fully cashless', desc: 'Card and PayPal live now. Apple Pay and Google Pay coming soon via Stripe. No cash float, no end-of-night counting.' },
+  { icon: '💳', title: 'Go cashless if you choose', desc: 'Card and PayPal live now. Apple Pay and Google Pay coming soon via Stripe. Go fully cashless or keep taking cash — it\'s your call.' },
   { icon: '🔔', title: 'Real-time customer alerts', desc: 'Customers get a live notification the moment their order is ready. Stop shouting names over the noise of the crowd.' },
   { icon: '🎨', title: 'Branded to your van', desc: 'Upload your logo, choose your theme colour, and your store looks like you — not a generic checkout page.' },
   { icon: '🎪', title: 'Festival & event ready', desc: 'Create a bespoke event menu for any occasion with custom items, pricing and branding — ready in minutes.' },
@@ -326,7 +326,7 @@ export default async function LandingPage() {
               <span className="text-gold-400">your card machine.</span>
             </h1>
             <p className="text-lg sm:text-xl text-purple-100 max-w-2xl mx-auto mb-6">
-              Runs on any tablet, Raspberry Pi or PC — no dedicated till, no POS hardware, no card reader required. Go fully cashless. Serve queues 6× faster. Watch your turnover grow.
+              Runs on any tablet, Raspberry Pi or PC — no dedicated till, no POS hardware, no card reader required. Choose to go fully cashless. Serve queues 6× faster. Watch your turnover grow.
             </p>
             <div className="flex flex-wrap justify-center gap-2 mb-10 text-sm font-medium">
               <span className="bg-white/10 text-purple-200 px-3 py-1.5 rounded-full border border-white/20">✓ SumUp</span>
@@ -671,9 +671,9 @@ export default async function LandingPage() {
       <section className="py-16 bg-gray-900 text-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
           <div className="text-5xl mb-6">💳</div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">Go completely cashless</h2>
+          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">Go cashless — if you choose</h2>
           <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-10">
-            Every transaction is digital. No float to manage before the event. No cash to count at the end. No contaminated hands during food prep. No shortfall at the bank on Monday morning. Just a clean, accurate digital record of every single sale.
+            Eventifood supports card, PayPal and Stripe — so if you want to go fully cashless, you can. No float to manage, no cash to count at the end of the night, no contaminated hands during food prep. Or keep accepting cash alongside digital payments. It&rsquo;s entirely up to you.
           </p>
           <div className="grid sm:grid-cols-3 gap-6">
             {[
