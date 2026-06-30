@@ -162,9 +162,18 @@ const sellerFeatures = [
   { icon: '🍽️', title: 'Dynamic Menus', desc: 'Build your full menu with categories, items, photos, extras and modifiers. Change prices, add specials, and hide sold-out items — all from your phone.' },
   { icon: '🎪', title: 'Event Menus', desc: 'Running at a festival this weekend? Create a one-off event menu with its own prices, items and branding — completely separate from your regular menu.' },
   { icon: '🖨️', title: 'Printable Menus with QR Codes', desc: 'Generate A4/A3/A2 print-ready menus with individual QR codes on every item. Customers scan the item they want and it goes straight into their basket.' },
+  { icon: '📟', title: 'Kitchen Display Screen', desc: "Orders appear on your kitchen screen the instant they're placed. Mark items ready, manage prep — no paper tickets, no shouting, no missed orders." },
+  { icon: '🔔', title: 'Customer Notifications', desc: "When the order's ready, the customer gets an email notification automatically. No calling names, no queues building at the hatch." },
   { icon: '📦', title: 'Inventory Control', desc: 'Set stock levels per item. Sold-out items disappear from the customer menu automatically. No more apologising at the hatch.' },
   { icon: '📊', title: 'Sales Analytics', desc: "See exactly what's selling, when your busiest periods are, and where your profit is coming from — then make smarter decisions about your menu and stock." },
+  { icon: '💰', title: 'Profit & Loss Tracking', desc: 'Enter your cost prices and Eventifood calculates margin per item and overall profit in real time. Know exactly where you stand at the end of every service.' },
+  { icon: '🗑️', title: 'Wastage Tracking', desc: "Log stock you've thrown away and see exactly what it's costing you. Over time you'll learn which items to prep less of and cut your waste bill." },
   { icon: '💳', title: 'Multi-Provider Payments', desc: 'Accept card payments and PayPal today. Apple Pay and Google Pay arrive with Stripe Connect — coming soon. You choose which providers suit your business.' },
+  { icon: '🎨', title: 'Custom Branding', desc: 'Set your theme colour, upload a banner image, and make your storefront look like yours. Every customer who scans your QR code sees your brand, not ours.' },
+  { icon: '🖥️', title: 'Full-Screen QR Display', desc: 'Drive a second screen or TV at your van showing your giant QR code. Customers spot it from the queue and start ordering before they even reach you.' },
+  { icon: '🏷️', title: 'Discount Codes', desc: 'Create and share promotional codes — percentage off, fixed amount, or free items. Perfect for festivals, loyalty rewards, or bringing back repeat customers.' },
+  { icon: '📱', title: 'Works on Any Device', desc: 'Manage everything from a £50 tablet, a Raspberry Pi touchscreen at the van, or your phone. No specialist hardware required — if it has a browser, it works.' },
+  { icon: '🚛', title: 'Not Tied to a Vehicle', desc: 'Your store, menu, QR codes and order history live in the cloud — not in your van. Pick up your tablet, move to a different vehicle, a market stall, or a pop-up tent, and carry on trading. Nothing to reinstall, nothing to reconfigure.' },
 ]
 
 const customerBenefits = [
@@ -194,6 +203,7 @@ const whyUs = [
   { icon: '🖨️', title: 'Printed QR menus', desc: 'Generate print-ready menus with QR codes on every single item. Stick them on your van, hand them out at the gate, or pin them to tables.' },
   { icon: '📦', title: 'Automatic stock control', desc: 'Running low? Sold out? Items hide themselves from the customer menu automatically so you never disappoint.' },
   { icon: '🌐', title: 'Your own branded URL', desc: 'yourname.eventifood.com — share it everywhere. Every customer who clicks lands on your menu, not a marketplace.' },
+  { icon: '🚛', title: 'Move vehicles. Keep everything.', desc: 'Your store lives in the cloud, not in your van. Swap vehicles, share a truck with another trader, or move to a market stall — grab your tablet and carry on. Zero reconfiguration.' },
 ]
 
 const testimonials = [
@@ -300,9 +310,11 @@ export default async function LandingPage() {
             <a href="#for-customers" className="hover:text-brand-600 transition-colors">For Customers</a>
             <a href="#how-it-works" className="hover:text-brand-600 transition-colors">How it works</a>
             <a href="#pricing" className="hover:text-brand-600 transition-colors">Pricing</a>
+            <Link href="/contact" className="hover:text-brand-600 transition-colors">Contact</Link>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors hidden sm:block">Sign in</Link>
+            <Link href="/contact" className="btn-secondary text-sm px-4 py-2 hidden sm:block">Book a demo</Link>
             <Link href="/register" className="btn-primary text-sm px-5 py-2">Get started free</Link>
           </div>
         </div>
@@ -885,6 +897,8 @@ export default async function LandingPage() {
               <Link href="/qr-code-ordering" className="hover:text-white transition-colors">QR Ordering</Link>
               <Link href="/mobile-catering-software" className="hover:text-white transition-colors">Mobile Catering</Link>
               <Link href="/food-truck-queue-management" className="hover:text-white transition-colors">Queue Management</Link>
+              <Link href="/contact" className="hover:text-white transition-colors">Contact us</Link>
+              <Link href="/contact" className="hover:text-white transition-colors">Book a demo</Link>
               <Link href="/login" className="hover:text-white transition-colors">Sign in</Link>
               <Link href="/register" className="hover:text-white transition-colors">Register</Link>
             </div>

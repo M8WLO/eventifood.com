@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { flushSync } from 'react-dom'
 import { useRouter, useParams } from 'next/navigation'
 import api from '@/lib/api'
 
@@ -118,7 +119,7 @@ export default function BasketPage() {
     e.preventDefault()
     if (basket.length === 0) return
     setError(null)
-    setPlacing(true)
+    flushSync(() => setPlacing(true))
     api.defaults.headers.common['X-Tenant-Slug'] = slug
     try {
       if (isDemo) {
@@ -164,7 +165,7 @@ export default function BasketPage() {
     e.preventDefault()
     if (basket.length === 0) return
     setError(null)
-    setPlacingPaypal(true)
+    flushSync(() => setPlacingPaypal(true))
     api.defaults.headers.common['X-Tenant-Slug'] = slug
     try {
       const { data } = await api.post('/api/payments/paypal/create/', {
@@ -337,7 +338,7 @@ export default function BasketPage() {
               {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
               <button type="submit" disabled={placing || placingPaypal} style={{ backgroundColor: isDemo ? '#f97316' : colors.primary }} className="w-full py-3 text-base text-white font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50">
                 {placing
-                  ? 'Placing order…'
+                  ? 'Please wait…'
                   : isDemo
                   ? `Place demo order · £${total.toFixed(2)}`
                   : `Pay by card · £${total.toFixed(2)}`}
@@ -352,7 +353,7 @@ export default function BasketPage() {
                   className="w-full py-3 text-base font-semibold rounded-lg transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
                   style={{ backgroundColor: '#FFC439', color: '#003087' }}
                 >
-                  {placingPaypal ? 'Redirecting to PayPal…' : (
+                  {placingPaypal ? 'Please wait…' : (
                     <>
                       <span className="font-extrabold">Pay</span>
                       <span style={{ color: '#009cde', fontWeight: 800 }}>Pal</span>

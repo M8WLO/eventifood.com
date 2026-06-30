@@ -79,7 +79,7 @@ export default function PublicMenuPage() {
       <div style={{ backgroundColor: '#111827' }}>
         <div className="max-w-5xl mx-auto px-6 py-5 flex items-center gap-6">
           {menu.banner ? (
-            <img src={menu.banner} alt={menu.store_name} className="h-14 object-contain rounded-lg" style={{ maxWidth: 180 }} />
+            <img src={menu.banner} alt={menu.store_name} className="h-20 object-contain rounded-lg" style={{ maxWidth: 240 }} />
           ) : (
             <h1 className="text-2xl font-extrabold tracking-tight text-white">{menu.store_name}</h1>
           )}

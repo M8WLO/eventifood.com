@@ -187,7 +187,7 @@ export default function PrintMenuPage() {
         <div className="menu-header bg-gray-900 text-white px-8 py-8 flex items-center gap-8" style={{ minHeight: 132 }}>
           {/* Left: store logo */}
           {menu.banner ? (
-            <img src={menu.banner} alt={menu.store_name} className="h-20 object-contain rounded-xl shrink-0" style={{ maxWidth: 230 }} />
+            <img src={menu.banner} alt={menu.store_name} className="h-28 object-contain rounded-xl shrink-0" style={{ maxWidth: 300 }} />
           ) : (
             <h1 className="text-3xl font-extrabold tracking-tight shrink-0">{menu.store_name}</h1>
           )}
