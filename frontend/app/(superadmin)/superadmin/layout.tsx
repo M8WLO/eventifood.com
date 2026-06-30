@@ -10,6 +10,9 @@ const NAV = [
   { href: '/superadmin?tab=tenants', label: 'Tenant Management', icon: '🏪', tab: 'tenants' },
   { href: '/superadmin/plans', label: 'Plans', icon: '💳', tab: null },
   { href: '/superadmin/promotions', label: 'Promotions', icon: '🎉', tab: null },
+  { href: '/superadmin/qr-code', label: 'QR Code', icon: '⬛', tab: null },
+  { href: '/superadmin/snapshots', label: 'Snapshots', icon: '💾', tab: null },
+  { href: '/superadmin/beta-tests', label: 'Beta Tests', icon: '🧪', tab: null },
 ]
 
 function SuperAdminNav() {
