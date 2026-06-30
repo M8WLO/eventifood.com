@@ -4,14 +4,14 @@ import Link from 'next/link'
 import PricingSection, { type Plan } from './(platform)/pricing-section'
 
 export const metadata: Metadata = {
-  title: 'Food Van Software & QR Ordering App — PAYG or Monthly Plans | Eventifood',
+  title: 'Throw Away Your Card Machine — The Ultimate Food Van Solution | Eventifood',
   description:
-    "The UK's food van ordering software. Set up a branded QR-code store, live kitchen display board, and queue management for your food truck or mobile catering business. Choose PAYG (2% per transaction, no monthly fee) or a flat monthly plan — whichever suits your turnover.",
+    "The UK's food van platform. Runs on tablet, Raspberry Pi or any PC — no dedicated till or POS hardware needed. Works with SumUp, PayPal and Stripe. Go fully cashless, serve queues 6× faster. From £19/month.",
   alternates: { canonical: 'https://eventifood.com' },
   openGraph: {
-    title: 'Food Van Software & QR Ordering App — PAYG or Monthly Plans | Eventifood',
+    title: 'Throw Away Your Card Machine — The Ultimate Food Van Solution | Eventifood',
     description:
-      "The UK's food van ordering software. QR ordering, kitchen display, queue management and analytics. Choose PAYG or a flat monthly plan — no setup fee.",
+      "No till. No card machine. No POS hardware. Runs on any tablet, Raspberry Pi or PC. Works with SumUp, PayPal and Stripe. The ultimate food van solution — from £19/month.",
     url: 'https://eventifood.com',
   },
 }
@@ -240,6 +240,11 @@ const faqJsonLd = {
       name: 'How is Eventifood different from a standard food truck POS?',
       acceptedAnswer: { '@type': 'Answer', text: 'Eventifood shifts order-taking entirely to the customer\'s phone. Staff focus on cooking. There is no card machine to rent, no monthly software fee, and no terminal at the hatch.' },
     },
+    {
+      '@type': 'Question',
+      name: 'What hardware do I need to run Eventifood?',
+      acceptedAnswer: { '@type': 'Answer', text: 'None that you do not already own. Eventifood runs in a browser on any Windows PC, Mac, tablet (iPad, Android, Amazon Fire) or Raspberry Pi. No dedicated till, no POS machine, and no card reader required. For card payments, Eventifood works with SumUp, PayPal and Stripe — use whichever you already have.' },
+    },
   ],
 }
 
@@ -313,14 +318,23 @@ export default async function LandingPage() {
 
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-24 md:py-32">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-tight mb-6">
-              Sell more food.<br />
-              <span className="text-gold-400">Serve queues 6× faster.</span><br />
-              <span className="text-gold-300 text-3xl sm:text-4xl">Go completely cashless.</span>
+            <span className="inline-block bg-gold-500/20 text-gold-300 text-xs sm:text-sm font-bold px-5 py-2 rounded-full uppercase tracking-widest mb-6 border border-gold-400/30">
+              The ultimate food van solution
+            </span>
+            <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold leading-tight mb-4">
+              Throw away<br />
+              <span className="text-gold-400">your card machine.</span>
             </h1>
-            <p className="text-lg sm:text-xl text-purple-100 max-w-2xl mx-auto mb-10">
-              Eventifood gives your food van a branded online store, live kitchen board, customer order alerts and full analytics — all in one platform. Your customers scan, order and pay on their phone. You cook. No cash. No chaos.
+            <p className="text-lg sm:text-xl text-purple-100 max-w-2xl mx-auto mb-6">
+              Runs on any tablet, Raspberry Pi or PC — no dedicated till, no POS hardware, no card reader required. Go fully cashless. Serve queues 6× faster. Watch your turnover grow.
             </p>
+            <div className="flex flex-wrap justify-center gap-2 mb-10 text-sm font-medium">
+              <span className="bg-white/10 text-purple-200 px-3 py-1.5 rounded-full border border-white/20">✓ SumUp</span>
+              <span className="bg-white/10 text-purple-200 px-3 py-1.5 rounded-full border border-white/20">✓ PayPal</span>
+              <span className="bg-white/10 text-purple-200 px-3 py-1.5 rounded-full border border-white/20">✓ Stripe</span>
+              <span className="bg-white/10 text-purple-200 px-3 py-1.5 rounded-full border border-white/20">✓ Tablet · Pi · PC</span>
+              <span className="bg-white/10 text-purple-200 px-3 py-1.5 rounded-full border border-white/20">✓ No hardware needed</span>
+            </div>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/register" className="bg-gold-500 hover:bg-gold-600 text-white font-bold text-lg py-4 px-10 rounded-xl shadow-lg hover:shadow-xl transition-all">
                 Open your store free →
@@ -337,6 +351,35 @@ export default async function LandingPage() {
           <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
             <path d="M0 60L1440 60L1440 20C1200 60 240 60 0 20L0 60Z" fill="white" />
           </svg>
+        </div>
+      </section>
+
+      {/* ── No hardware / any device strip ── */}
+      <section className="py-10 bg-gray-950 border-b border-gray-800">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <p className="text-center text-xs font-bold text-gray-500 uppercase tracking-widest mb-8">No specialist hardware required — run it on what you already own</p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-center">
+            <div>
+              <div className="text-3xl mb-2">💻</div>
+              <p className="font-bold text-white text-sm">Windows / Mac / Linux</p>
+              <p className="text-gray-500 text-xs mt-1">Any laptop or desktop. Opens in a browser — nothing to install.</p>
+            </div>
+            <div>
+              <div className="text-3xl mb-2">📱</div>
+              <p className="font-bold text-white text-sm">Tablet</p>
+              <p className="text-gray-500 text-xs mt-1">iPad, Android or Amazon Fire. Mount it in your van and go.</p>
+            </div>
+            <div>
+              <div className="text-3xl mb-2">🍓</div>
+              <p className="font-bold text-white text-sm">Raspberry Pi</p>
+              <p className="text-gray-500 text-xs mt-1">Full POS on a £35 board. No dedicated till or POS machine needed.</p>
+            </div>
+            <div>
+              <div className="text-3xl mb-2">💳</div>
+              <p className="font-bold text-white text-sm">SumUp · PayPal · Stripe</p>
+              <p className="text-gray-500 text-xs mt-1">Use the provider you already have. Switch or add another anytime.</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -724,7 +767,15 @@ export default async function LandingPage() {
             <p className="text-lg text-gray-500 max-w-xl mx-auto">Start free on PAYG. Upgrade when you need the extra tools. No hidden fees, no monthly bill when you're not trading.</p>
           </div>
           <PricingSection plans={plans} />
-          <div className="mt-10 grid sm:grid-cols-2 gap-6">
+
+          <div className="mt-8 bg-gradient-to-r from-gold-500 to-amber-500 rounded-2xl p-8 text-white text-center shadow-xl">
+            <p className="text-3xl sm:text-4xl font-extrabold mb-2">Costs less than 2 hours of staff time a month.</p>
+            <p className="text-yellow-100 text-sm sm:text-base max-w-2xl mx-auto mt-3">
+              The Trader plan is £19/month — less than paying a member of staff for a Saturday morning shift. Yet it replaces your card machine, your POS terminal, your queue management system, and your end-of-night reconciliation headache. In one platform. On any device you already own.
+            </p>
+          </div>
+
+          <div className="mt-6 grid sm:grid-cols-2 gap-6">
             <div className="bg-brand-700 rounded-2xl p-8 text-white text-center">
               <p className="font-extrabold text-xl mb-2">Seasonal trader? PAYG is made for you.</p>
               <p className="text-brand-200 text-sm">On PAYG you only pay when orders come through — 2% per transaction. Park the van in November, come back in April. Your store, your menu, and your full order history are exactly where you left them. You paid nothing while you were away.</p>
@@ -743,9 +794,10 @@ export default async function LandingPage() {
         <FoodTruckSVG className="absolute -bottom-4 -left-8 w-64 text-white opacity-10 pointer-events-none hidden md:block" />
         <div className="max-w-2xl mx-auto px-4 sm:px-6 relative">
           <Image src="/logo.png" alt="Eventifood" width={320} height={112} className="h-28 w-auto mx-auto mb-8 brightness-0 invert" />
-          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">Ready to serve more customers — with less stress?</h2>
+          <p className="text-gold-300 font-bold uppercase tracking-widest text-sm mb-3">The ultimate food van solution</p>
+          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">Throw away your card machine. Start trading smarter today.</h2>
           <p className="text-brand-200 text-lg mb-10">
-            Set up is free. Takes 30 minutes. Your QR-code store is live today — and your first order could arrive before the end of the day.
+            Runs on any tablet, Raspberry Pi or PC. Works with SumUp, PayPal and Stripe. Set up is free, takes 30 minutes, and your first order could arrive before the end of the day.
           </p>
           <Link href="/register" className="inline-block bg-gold-400 hover:bg-gold-500 text-white font-bold text-lg py-4 px-12 rounded-xl shadow-xl hover:shadow-2xl transition-all">
             Open your store free →
@@ -789,7 +841,11 @@ export default async function LandingPage() {
               },
               {
                 q: 'How is Eventifood different from a standard food truck POS?',
-                a: 'A traditional food truck POS (EPOS) system requires staff to take orders at the hatch — customers still queue, still wait, and cash or card is still handled by the same person making the food. Eventifood shifts order-taking entirely to the customer\'s phone. Staff focus 100% on cooking. The kitchen display shows every order the moment it\'s paid. There is no card machine, no terminal rental, and no monthly software fee.',
+                a: 'A traditional food truck POS (EPOS) requires staff to take orders at the hatch — customers still queue, still wait, and cash or card is handled by the same person making the food. Eventifood shifts order-taking entirely to the customer\'s phone. Staff focus 100% on cooking. The kitchen display shows every order the moment it\'s paid. There is no card machine to rent, no POS terminal, and no monthly fee when you\'re not trading.',
+              },
+              {
+                q: 'What hardware do I need to run Eventifood?',
+                a: 'None that you don\'t already own. Eventifood runs in a browser on any Windows PC, Mac, tablet (iPad, Android, Amazon Fire) or Raspberry Pi. Mount a tablet in your van or prop up a cheap laptop and you have a full POS system, kitchen display and customer ordering platform — with no dedicated till, no POS machine, and no card reader required. For card payments, Eventifood works with SumUp, PayPal and Stripe — use whichever you already have.',
               },
               {
                 q: 'How long does it take to set up?',
