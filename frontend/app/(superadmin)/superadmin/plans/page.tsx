@@ -249,7 +249,11 @@ export default function PlansPage() {
                     <button
                       key={value}
                       type="button"
-                      onClick={() => set('billing_model', value as 'payg' | 'subscription')}
+                      onClick={() => {
+                        set('billing_model', value as 'payg' | 'subscription')
+                        if (value === 'subscription') set('platform_fee_percent', '0.00')
+                        else if (modal.platform_fee_percent === '0.00') set('platform_fee_percent', '2.00')
+                      }}
                       className={`text-left rounded-xl border-2 px-4 py-3 transition-all ${
                         modal.billing_model === value
                           ? 'border-brand-500 bg-brand-50'
@@ -263,20 +267,24 @@ export default function PlansPage() {
                 </div>
               </div>
 
-              {/* PAYG fields */}
-              {!isSubscription && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Platform fee % <span className="text-gray-400 font-normal">(taken from each transaction)</span></label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={modal.platform_fee_percent}
-                    onChange={(e) => set('platform_fee_percent', e.target.value)}
-                    className="input-field"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">Seller also pays Stripe processing (1.5% + 20p for UK cards). Collected automatically via Stripe Connect application fee.</p>
-                </div>
-              )}
+              {/* Platform fee — shown for all billing models */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Platform fee % <span className="text-gray-400 font-normal">(per transaction via Stripe Connect)</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={modal.platform_fee_percent}
+                  onChange={(e) => set('platform_fee_percent', e.target.value)}
+                  className="input-field"
+                />
+                {isSubscription
+                  ? <p className="text-xs text-gray-400 mt-1">Subscription plans do not charge a per-transaction fee — keep this at 0.00.</p>
+                  : <p className="text-xs text-gray-400 mt-1">Collected automatically via Stripe Connect application fee. Seller also pays Stripe processing (1.5% + 20p for UK cards).</p>
+                }
+              </div>
 
               {/* Subscription fields */}
               {isSubscription && (

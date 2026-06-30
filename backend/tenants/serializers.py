@@ -4,11 +4,17 @@ from accounts.models import TenantMembership
 
 
 class PromotionSerializer(serializers.ModelSerializer):
+    plan_name = serializers.SerializerMethodField()
+
+    def get_plan_name(self, obj):
+        return obj.plan.name if obj.plan else None
+
     class Meta:
         model = Promotion
         fields = ['id', 'name', 'banner_headline', 'banner_subtext', 'banner_cta',
-                  'start_date', 'end_date', 'trial_until', 'is_active', 'created_at']
-        read_only_fields = ['id', 'created_at']
+                  'start_date', 'end_date', 'trial_until', 'plan', 'plan_name',
+                  'is_active', 'created_at']
+        read_only_fields = ['id', 'plan_name', 'created_at']
 
 
 class TenantSerializer(serializers.ModelSerializer):

@@ -5,6 +5,12 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 
+interface Plan {
+  id: number
+  name: string
+  slug: string
+}
+
 interface Promotion {
   id: number
   name: string
@@ -14,6 +20,8 @@ interface Promotion {
   start_date: string
   end_date: string
   trial_until: string
+  plan: number | null
+  plan_name: string | null
   is_active: boolean
   created_at: string
 }
@@ -23,9 +31,10 @@ const JULY_DEFAULTS = {
   banner_headline: 'July Giveaway — 3 months completely free.',
   banner_subtext: 'Register in July, trade free until 1st October. No card. No catch. Our gift to you.',
   banner_cta: 'Claim free months →',
-  start_date: '2026-07-01',
+  start_date: '2026-06-29',
   end_date: '2026-07-31',
   trial_until: '2026-10-01',
+  plan: null as number | null,
   is_active: true,
 }
 
@@ -37,14 +46,16 @@ const EMPTY_FORM = {
   start_date: '',
   end_date: '',
   trial_until: '',
+  plan: null as number | null,
   is_active: true,
 }
 
 export default function PromotionsPage() {
   const [promos, setPromos] = useState<Promotion[]>([])
+  const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ ...JULY_DEFAULTS })
+  const [form, setForm] = useState<typeof JULY_DEFAULTS>({ ...JULY_DEFAULTS })
   const [editId, setEditId] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -53,10 +64,14 @@ export default function PromotionsPage() {
   async function load() {
     setLoading(true)
     try {
-      const res = await api.get('/api/tenants/promotions/')
-      setPromos(res.data)
+      const [promosRes, plansRes] = await Promise.all([
+        api.get('/api/tenants/promotions/'),
+        api.get('/api/subscriptions/plans/'),
+      ])
+      setPromos(promosRes.data)
+      setPlans(plansRes.data)
     } catch {
-      setError('Failed to load promotions.')
+      setError('Failed to load data.')
     } finally {
       setLoading(false)
     }
@@ -82,6 +97,7 @@ export default function PromotionsPage() {
       start_date: p.start_date,
       end_date: p.end_date,
       trial_until: p.trial_until,
+      plan: p.plan,
       is_active: p.is_active,
     })
     setError('')
@@ -255,6 +271,21 @@ export default function PromotionsPage() {
             </div>
 
             <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Plan granted to registrations</label>
+              <select
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                value={form.plan ?? ''}
+                onChange={e => setForm(f => ({ ...f, plan: e.target.value ? Number(e.target.value) : null }))}
+              >
+                <option value="">— No plan override —</option>
+                {plans.map(plan => (
+                  <option key={plan.id} value={plan.id}>{plan.name}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">Registrations during the window are assigned this plan automatically.</p>
+            </div>
+
+            <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Free trial until</label>
               <input
                 type="date"
@@ -343,6 +374,7 @@ export default function PromotionsPage() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Name</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Window</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Trial until</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Plan</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -358,6 +390,9 @@ export default function PromotionsPage() {
                     {p.start_date} → {p.end_date}
                   </td>
                   <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{p.trial_until}</td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {p.plan_name ?? <span className="text-gray-400 text-xs">None</span>}
+                  </td>
                   <td className="px-4 py-3">{statusBadge(p)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 justify-end">
@@ -393,6 +428,7 @@ export default function PromotionsPage() {
         <ul className="list-disc list-inside space-y-1 text-xs text-amber-800">
           <li>The hero page banner is shown automatically when a promotion is active today (start date ≤ today ≤ end date).</li>
           <li>New registrations that verify their email during the window receive <code className="bg-amber-100 px-1 rounded">trial_expires_at</code> set to the <strong>Trial until</strong> date — free trading, no card required.</li>
+          <li>If a plan is selected, registrations are automatically assigned that plan.</li>
           <li>Only the first matching active promotion runs (ordered by start date descending).</li>
           <li>Deactivate a promotion to suppress the banner immediately without deleting it.</li>
         </ul>
