@@ -10,7 +10,7 @@ def seed_july_promotion(apps, schema_editor):
             banner_headline='July Giveaway — 3 months completely free.',
             banner_subtext='Register in July, trade free until 1st October. No card. No catch. Our gift to you.',
             banner_cta='Claim free months →',
-            start_date=datetime.date(2026, 7, 1),
+            start_date=datetime.date(2026, 6, 29),
             end_date=datetime.date(2026, 7, 31),
             trial_until=datetime.date(2026, 10, 1),
             is_active=True,

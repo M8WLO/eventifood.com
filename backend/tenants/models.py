@@ -63,6 +63,8 @@ class Tenant(models.Model):
     show_event_menu_name = models.BooleanField(default=False)
     july_giveaway = models.BooleanField(default=False)
     catalogue_updated_at = models.DateTimeField(null=True, blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
 
     class Meta:
         ordering = ['name']

@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.mail import send_mail
 from django.db.models import Count
 from rest_framework import status
 from rest_framework.response import Response
@@ -476,3 +477,72 @@ class PromotionDetailView(APIView):
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
         promo.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ContactView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        name = request.data.get('name', '').strip()
+        email = request.data.get('email', '').strip()
+        phone = request.data.get('phone', '').strip()
+        message = request.data.get('message', '').strip()
+        wants_demo = bool(request.data.get('wants_demo', False))
+
+        if not name or not email or not message:
+            return Response({'error': 'name, email and message are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        subject = f"{'[DEMO REQUEST] ' if wants_demo else ''}Eventifood enquiry from {name}"
+        body = (
+            f"Name: {name}\n"
+            f"Email: {email}\n"
+            f"Phone: {phone or '—'}\n"
+            f"Demo requested: {'Yes' if wants_demo else 'No'}\n\n"
+            f"Message:\n{message}"
+        )
+
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=['hello@eventifood.com'],
+            fail_silently=True,
+        )
+        return Response({'sent': True})
+
+
+class TenantMapView(APIView):
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request):
+        tenants = Tenant.objects.values(
+            'id', 'name', 'slug', 'is_active', 'is_demo',
+            'latitude', 'longitude', 'trial_expires_at',
+        ).order_by('name')
+        return Response(list(tenants))
+
+
+class TenantLocationView(APIView):
+    permission_classes = [IsSuperAdmin]
+
+    def patch(self, request, slug):
+        try:
+            tenant = Tenant.objects.get(slug=slug)
+        except Tenant.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        lat = request.data.get('latitude')
+        lng = request.data.get('longitude')
+
+        if lat is None and lng is None:
+            tenant.latitude = None
+            tenant.longitude = None
+        else:
+            try:
+                tenant.latitude = float(lat)
+                tenant.longitude = float(lng)
+            except (TypeError, ValueError):
+                return Response({'error': 'Invalid coordinates.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        tenant.save(update_fields=['latitude', 'longitude'])
+        return Response({'slug': tenant.slug, 'latitude': tenant.latitude, 'longitude': tenant.longitude})
