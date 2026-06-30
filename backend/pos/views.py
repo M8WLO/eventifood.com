@@ -237,6 +237,47 @@ class PosStatusView(APIView):
         })
 
 
+class PosLookupTenantView(APIView):
+    """Return store name for the POS discovery handshake (called by the Next.js lookup route)."""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        tenant: Tenant = request.tenant
+        if tenant is None:
+            return Response({'error': 'Store not found.'}, status=404)
+        return Response({'store_name': tenant.name})
+
+
+class PosAuthDeviceView(APIView):
+    """Validate the tenant owner's password to authorise a new POS device."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        from accounts.models import TenantMembership
+
+        tenant: Tenant = request.tenant
+        if tenant is None:
+            return Response({'error': 'Store not found.'}, status=404)
+
+        password = request.data.get('password', '')
+        if not password:
+            return Response({'error': 'Password is required.'}, status=400)
+
+        membership = (
+            TenantMembership.objects
+            .filter(tenant=tenant, role='owner')
+            .select_related('user')
+            .first()
+        )
+        if not membership:
+            return Response({'error': 'No owner found for this store.'}, status=403)
+
+        if not membership.user.check_password(password):
+            return Response({'error': 'Incorrect password.'}, status=403)
+
+        return Response({'ok': True, 'store_name': tenant.name})
+
+
 class PosBulkOrderView(APIView):
     """Accept a batch of offline POS orders in a single POST from the sync push."""
     permission_classes = [AllowAny]
